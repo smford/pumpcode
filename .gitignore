@@ -1,0 +1,10 @@
+# Pipeline output datasets (deployed directly to gh-pages branch)
+data/
+
+# Go binaries and caches
+*.exe
+*.test
+*.out
+
+# macOS metadata
+.DS_Store

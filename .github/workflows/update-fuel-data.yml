@@ -1,0 +1,75 @@
+name: Update Fuel Data
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  update-fuel-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+          cache: true
+
+      - name: Run Fuel Ingestion Pipeline
+        env:
+          FUEL_FINDER_CLIENT_ID: ${{ secrets.FUEL_FINDER_CLIENT_ID }}
+          FUEL_FINDER_CLIENT_SECRET: ${{ secrets.FUEL_FINDER_CLIENT_SECRET }}
+        run: |
+          go run ./cmd/pipeline/main.go
+
+      - name: Deploy Data to gh-pages Branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Prepare temporary staging directory
+          STAGING_DIR=$(mktemp -d)
+          cp -r static/* "$STAGING_DIR/"
+          mkdir -p "$STAGING_DIR/data/outcodes"
+          cp -r data/outcodes/*.json "$STAGING_DIR/data/outcodes/"
+
+          # Fetch remote branches
+          git fetch origin
+
+          # Checkout or create gh-pages branch in worktree
+          WORKTREE_DIR=$(mktemp -d)
+          if git ls-remote --exit-code --heads origin gh-pages; then
+            git worktree add -B gh-pages "$WORKTREE_DIR" origin/gh-pages
+          else
+            git worktree add --orphan -B gh-pages "$WORKTREE_DIR"
+            cd "$WORKTREE_DIR"
+            git rm -rf . || true
+            cd -
+          fi
+
+          # Sync updated static site and sharded data into worktree
+          rm -rf "$WORKTREE_DIR"/*
+          cp -r "$STAGING_DIR"/* "$WORKTREE_DIR/"
+
+          cd "$WORKTREE_DIR"
+
+          # Stage files and check if fuel data or static assets changed
+          git add -f data/outcodes/*.json index.html styles.css app.js
+          if git diff --cached --quiet; then
+            echo "No changes detected in forecourt prices or assets. Skipping commit."
+          else
+            git commit -m "chore(data): automated fuel price update [skip ci]"
+            git push origin gh-pages
+            echo "Successfully published updated data to gh-pages branch."
+          fi

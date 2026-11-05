@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="PumpCode - Automated, zero-cost, real-time UK fuel price tracker for filling stations and forecourts.">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    // Prevent FOUC by reading theme override immediately before render
+    try {
+      const storedScheme = localStorage.getItem("pumpcode-theme");
+      if (storedScheme === "light" || storedScheme === "dark") {
+        document.querySelector('meta[name="color-scheme"]').content = storedScheme;
+      }
+    } catch (_) {}
+  </script>
+  <title>PumpCode | UK Fuel Price Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner container">
+      <div class="brand-group">
+        <h1 class="logo-text">Pump<span class="logo-accent">Code</span></h1>
+        <span class="tagline">UK Fuel Price Tracker</span>
+      </div>
+
+      <div class="header-actions">
+        <span id="freshness-badge" class="badge freshness-badge" aria-live="polite">Checking data freshness...</span>
+        <button id="theme-toggle" class="btn btn-icon" type="button" aria-label="Toggle light and dark color scheme" title="Toggle theme">
+          <span class="theme-icon light-icon" aria-hidden="true">&#9728;</span>
+          <span class="theme-icon dark-icon" aria-hidden="true">&#9790;</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="controls-panel" aria-label="Search and filter forecourts">
+      <div class="search-row">
+        <div class="search-input-wrapper">
+          <label for="outcode-search" class="visually-hidden">Search by UK Outcode or Postcode</label>
+          <input
+            type="search"
+            id="outcode-search"
+            class="input-search"
+            placeholder="Enter UK Outcode or Postcode (e.g. SS1, SW1A, BS1)..."
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <div id="autocomplete-list" class="autocomplete-list" role="listbox" hidden></div>
+        </div>
+
+        <button id="locate-btn" class="btn btn-secondary" type="button">
+          <span class="btn-icon-text" aria-hidden="true">&#x25CE;</span> Use My Location
+        </button>
+      </div>
+
+      <div class="filter-row">
+        <fieldset class="grade-toggle-group">
+          <legend class="visually-hidden">Select Fuel Grade</legend>
+          <input type="radio" id="grade-e10" name="fuel-grade" value="E10" checked>
+          <label for="grade-e10" class="toggle-label">Unleaded (E10)</label>
+
+          <input type="radio" id="grade-b7" name="fuel-grade" value="B7">
+          <label for="grade-b7" class="toggle-label">Diesel (B7)</label>
+
+          <input type="radio" id="grade-e5" name="fuel-grade" value="E5">
+          <label for="grade-e5" class="toggle-label">Super (E5)</label>
+        </fieldset>
+
+        <div class="quick-outcodes" id="quick-outcodes" aria-label="Popular districts">
+          <!-- Populated from index.json -->
+        </div>
+      </div>
+    </section>
+
+    <section id="status-container" class="status-container" aria-live="polite"></section>
+
+    <section id="results-section" class="results-section" aria-label="Fuel stations">
+      <div class="results-header" id="results-header" hidden>
+        <h2 id="results-title">Stations</h2>
+        <span id="results-count" class="badge">0 stations</span>
+      </div>
+
+      <div id="stations-grid" class="stations-grid">
+        <!-- Rendered station cards -->
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>Data provided via UK Fuel Finder Open Data Scheme.</p>
+      <p>PumpCode &bull; Zero build step, static edge hosting on GitHub Pages.</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
