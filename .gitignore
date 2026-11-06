@@ -1,5 +1,6 @@
-# Pipeline output datasets (deployed directly to gh-pages branch)
+# Pipeline output datasets and staging
 data/
+_site/
 
 # Go binaries and caches
 *.exe

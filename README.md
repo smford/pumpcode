@@ -110,19 +110,17 @@ git push -u origin main
 4. Add a secret named `FUEL_FINDER_CLIENT_ID` with your API Client ID.
 5. Add a second secret named `FUEL_FINDER_CLIENT_SECRET` with your API Client Secret.
 
-### Step 3: Configure GitHub Pages branch
+### Step 3: Configure GitHub Pages source
 
 1. In your repository settings, go to the Pages tab on the left sidebar.
-2. Under Build and deployment > Source, select "Deploy from a branch".
-3. Under Branch, select `gh-pages` and folder `/ (root)`. If the `gh-pages` branch is not listed yet, run the workflow manually once (see Step 4 below) and return here to select it.
-4. Click Save.
+2. Under Build and deployment > Source, select "GitHub Actions".
 
 ### Step 4: Run the automated workflow
 
 1. Go to the Actions tab in your GitHub repository.
-2. Select the "Update Fuel Data" workflow in the left list.
+2. Select the "Update Fuel Data and Deploy Pages" workflow in the left list.
 3. Click Run workflow > Run workflow.
 
-The workflow will run the Go pipeline, generate the sharded data files, and push the updated site to the `gh-pages` branch. Once complete, GitHub Pages will provide a live URL where your tracker is publicly accessible.
+The workflow will run the Go pipeline, generate the sharded data files, package the static assets, and deploy the site directly to GitHub Pages. Once complete, GitHub Pages will provide a live URL where your tracker is publicly accessible.
 
 The workflow is configured to run automatically every 30 minutes via GitHub Actions cron, keeping fuel prices up to date without manual intervention.
