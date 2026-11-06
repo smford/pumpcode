@@ -34,6 +34,10 @@ jobs:
         env:
           FUEL_FINDER_CLIENT_ID: ${{ secrets.FUEL_FINDER_CLIENT_ID }}
           FUEL_FINDER_CLIENT_SECRET: ${{ secrets.FUEL_FINDER_CLIENT_SECRET }}
+          FUEL_FINDER_TOKEN_URL: ${{ secrets.FUEL_FINDER_TOKEN_URL || vars.FUEL_FINDER_TOKEN_URL }}
+          FUEL_FINDER_BASE_URL: ${{ secrets.FUEL_FINDER_BASE_URL || vars.FUEL_FINDER_BASE_URL }}
+          FUEL_FINDER_STATIONS_ENDPOINT: ${{ secrets.FUEL_FINDER_STATIONS_ENDPOINT || vars.FUEL_FINDER_STATIONS_ENDPOINT }}
+          FUEL_FINDER_SCOPE: ${{ secrets.FUEL_FINDER_SCOPE || vars.FUEL_FINDER_SCOPE }}
         run: |
           go run ./cmd/pipeline/main.go
 

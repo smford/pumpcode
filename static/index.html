@@ -37,24 +37,28 @@
 
   <main class="container">
     <section class="controls-panel" aria-label="Search and filter forecourts">
-      <div class="search-row">
+      <form id="search-form" class="search-row" role="search" onsubmit="return false;">
         <div class="search-input-wrapper">
           <label for="outcode-search" class="visually-hidden">Search by UK Outcode or Postcode</label>
           <input
             type="search"
             id="outcode-search"
             class="input-search"
-            placeholder="Enter UK Outcode or Postcode (e.g. SS1, SW1A, BS1)..."
+            placeholder="Enter UK Outcode or full Postcode (e.g. CV3 4AR, SW1A 1AA)..."
             autocomplete="off"
             spellcheck="false"
           >
           <div id="autocomplete-list" class="autocomplete-list" role="listbox" hidden></div>
         </div>
 
+        <button id="search-btn" class="btn btn-primary" type="submit">
+          Search
+        </button>
+
         <button id="locate-btn" class="btn btn-secondary" type="button">
           <span class="btn-icon-text" aria-hidden="true">&#x25CE;</span> Use My Location
         </button>
-      </div>
+      </form>
 
       <div class="filter-row">
         <fieldset class="grade-toggle-group">

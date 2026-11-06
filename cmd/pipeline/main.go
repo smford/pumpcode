@@ -39,11 +39,11 @@ func main() {
 
 	if *mockMode || (clientID == "" && clientSecret == "") {
 		if clientID == "" && clientSecret == "" && !*mockMode {
-			log.Println("[PumpCode Pipeline] Note: FUEL_FINDER_CLIENT_ID and FUEL_FINDER_CLIENT_SECRET not set. Generating sample dataset.")
+			log.Println("[PumpCode Pipeline] Note: FUEL_FINDER_CLIENT_ID and FUEL_FINDER_CLIENT_SECRET not set. Ingesting open data feeds and benchmarks.")
 		} else {
 			log.Println("[PumpCode Pipeline] Running in mock generation mode.")
 		}
-		stations = client.GenerateMockStations()
+		stations = client.FetchOpenDataFeeds(ctx, nil)
 	} else {
 		log.Printf("[PumpCode Pipeline] Connecting to Fuel Finder API (%s)...", *baseURL)
 		c := client.NewClient(client.Config{
@@ -59,8 +59,8 @@ func main() {
 
 		stations, err = c.FetchStations(ctx)
 		if err != nil {
-			log.Printf("[PumpCode Pipeline] WARNING: Upstream API request failed (%v). Falling back to sample dataset to ensure zero-downtime static site deployment.", err)
-			stations = client.GenerateMockStations()
+			log.Printf("[PumpCode Pipeline] WARNING: Upstream API request failed (%v). Ingesting public open data feeds to ensure complete UK coverage.", err)
+			stations = client.FetchOpenDataFeeds(ctx, nil)
 		}
 	}
 

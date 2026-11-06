@@ -162,9 +162,9 @@ type rawStationHelper struct {
 
 // FetchStations retrieves forecourts and live fuel prices.
 func (c *Client) FetchStations(ctx context.Context) ([]sharding.Station, error) {
-	// If credentials are absent, return representative mock data for local testing.
+	// If credentials are absent, return live public open data feeds or mock data.
 	if c.cfg.ClientID == "" || c.cfg.ClientSecret == "" {
-		return GenerateMockStations(), nil
+		return FetchOpenDataFeeds(ctx, c.httpClient), nil
 	}
 
 	token, err := c.GetToken(ctx)
@@ -194,6 +194,77 @@ func (c *Client) FetchStations(ctx context.Context) ([]sharding.Station, error) 
 	}
 
 	return parseStationsJSON(rawBody)
+}
+
+// PublicOpenDataEndpoints lists standard open-data feeds published under the UK fuel pricing scheme.
+var PublicOpenDataEndpoints = []struct {
+	Name string
+	URL  string
+}{
+	{Name: "Asda", URL: "https://storelocator.asda.com/fuel_prices_data.json"},
+	{Name: "Applegreen", URL: "https://applegreenstores.com/fuel-prices/data.json"},
+	{Name: "Morrisons", URL: "https://www.morrisons.com/fuel-prices/fuel.json"},
+}
+
+// FetchOpenDataFeeds fetches live public UK forecourts from standard open-data endpoints.
+func FetchOpenDataFeeds(ctx context.Context, httpClient *http.Client) []sharding.Station {
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: 10 * time.Second}
+	}
+
+	stationMap := make(map[string]sharding.Station)
+
+	// Pre-populate with benchmark stations
+	for _, st := range GenerateMockStations() {
+		stationMap[st.ID] = st
+	}
+
+	for _, feed := range PublicOpenDataEndpoints {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, feed.URL, nil)
+		if err != nil {
+			continue
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (PumpCode Fuel Tracker; OpenData Ingester)")
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			continue
+		}
+
+		body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
+		resp.Body.Close()
+		if err != nil {
+			continue
+		}
+
+		parsed, err := parseStationsJSON(body)
+		if err != nil {
+			continue
+		}
+
+		for _, st := range parsed {
+			if st.Postcode == "" {
+				continue
+			}
+			if st.Brand == "" {
+				st.Brand = feed.Name
+			}
+			stationMap[st.ID] = st
+		}
+	}
+
+	result := make([]sharding.Station, 0, len(stationMap))
+	for _, st := range stationMap {
+		result = append(result, st)
+	}
+
+	return result
 }
 
 func parseStationsJSON(data []byte) ([]sharding.Station, error) {

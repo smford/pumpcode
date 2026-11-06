@@ -17,7 +17,9 @@
   };
 
   // DOM Elements
+  const searchForm = document.getElementById('search-form');
   const searchInput = document.getElementById('outcode-search');
+  const searchBtn = document.getElementById('search-btn');
   const autocompleteList = document.getElementById('autocomplete-list');
   const locateBtn = document.getElementById('locate-btn');
   const freshnessBadge = document.getElementById('freshness-badge');
@@ -109,8 +111,8 @@
     if (!outcodes || !outcodes.length) return;
     quickOutcodesContainer.innerHTML = '';
 
-    // Show up to 5 top outcodes as quick buttons
-    const sample = outcodes.slice(0, 5);
+    // Show up to 6 top outcodes as quick buttons
+    const sample = outcodes.slice(0, 6);
     sample.forEach((item) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -152,7 +154,7 @@
         console.warn('Geolocation error:', err.message);
         clearStatus();
         if (manualTrigger) {
-          showStatus('Location permission denied. Please enter your outcode manually.', 'alert-warning');
+          showStatus('Location permission denied. Please enter your outcode or postcode manually.', 'alert-warning');
         }
         fallbackToFirstOutcode();
       },
@@ -168,11 +170,15 @@
 
       if (data.result && data.result.length > 0 && data.result[0].outcode) {
         const detectedOutcode = data.result[0].outcode.toUpperCase();
-        showStatus(`Located near ${detectedOutcode}. Loading fuel prices...`, 'alert-info');
-        await loadOutcode(detectedOutcode);
-      } else {
-        fallbackToFirstOutcode();
+        const exists = state.outcodesIndex && state.outcodesIndex.outcodes && state.outcodesIndex.outcodes.some((item) => item.outcode === detectedOutcode);
+        if (exists) {
+          showStatus(`Located near ${detectedOutcode}. Loading fuel prices...`, 'alert-info');
+          await loadOutcode(detectedOutcode);
+          return;
+        }
       }
+      // If direct outcode has no station or lookup was inconclusive, find nearest with stations
+      await findAndLoadNearestOutcode(lat, lon, 'your current location');
     } catch (err) {
       console.warn('Coordinate resolution failed:', err);
       fallbackToFirstOutcode();
@@ -191,6 +197,20 @@
   function setupSearch() {
     let debounceTimer;
 
+    if (searchForm) {
+      searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        performSearch();
+      });
+    }
+
+    if (searchBtn) {
+      searchBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        performSearch();
+      });
+    }
+
     searchInput.addEventListener('input', (e) => {
       clearTimeout(debounceTimer);
       const query = e.target.value.trim().toUpperCase();
@@ -202,18 +222,14 @@
 
       debounceTimer = setTimeout(() => {
         handleAutocomplete(query);
-      }, 180);
+      }, 160);
     });
 
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        const raw = searchInput.value.trim().toUpperCase();
-        if (raw) {
-          const parsed = parseOutcodeFromInput(raw);
-          closeAutocomplete();
-          loadOutcode(parsed);
-        }
+        closeAutocomplete();
+        performSearch();
       } else if (e.key === 'Escape') {
         closeAutocomplete();
       }
@@ -225,6 +241,104 @@
         closeAutocomplete();
       }
     });
+  }
+
+  async function performSearch(rawInput) {
+    const raw = (rawInput || searchInput.value || '').trim().toUpperCase();
+    if (!raw) return;
+
+    closeAutocomplete();
+    const candidateOutcode = parseOutcodeFromInput(raw);
+
+    // Direct match against indexed outcodes
+    const exists = state.outcodesIndex && state.outcodesIndex.outcodes && state.outcodesIndex.outcodes.some((item) => item.outcode === candidateOutcode);
+
+    if (exists) {
+      await loadOutcode(candidateOutcode);
+      return;
+    }
+
+    // Attempt lookup via postcodes.io for full postcode or missing outcode
+    showStatus(`Looking up postcode "${raw}"...`, 'alert-info');
+    const resolved = await resolvePostcodeOrNearest(raw, candidateOutcode);
+    if (!resolved) {
+      showStatus(`No filling stations found for "${raw}". Try entering a nearby town or district.`, 'alert-warning');
+    }
+  }
+
+  async function resolvePostcodeOrNearest(query, fallbackOutcode) {
+    try {
+      const cleanPostcode = encodeURIComponent(query.replace(/[^A-Za-z0-9]/g, ''));
+      const res = await fetch(`https://api.postcodes.io/postcodes/${cleanPostcode}`);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.result) {
+          const { latitude, longitude, outcode } = data.result;
+          state.userCoords = { lat: latitude, lon: longitude };
+
+          const exists = state.outcodesIndex && state.outcodesIndex.outcodes && state.outcodesIndex.outcodes.some((item) => item.outcode === outcode);
+          if (exists) {
+            await loadOutcode(outcode);
+            return true;
+          }
+          return await findAndLoadNearestOutcode(latitude, longitude, outcode);
+        }
+      }
+
+      // Try looking up outcode directly
+      const outcodeRes = await fetch(`https://api.postcodes.io/outcodes/${encodeURIComponent(fallbackOutcode)}`);
+      if (outcodeRes.ok) {
+        const outData = await outcodeRes.json();
+        if (outData.result && outData.result.latitude) {
+          return await findAndLoadNearestOutcode(outData.result.latitude, outData.result.longitude, fallbackOutcode);
+        }
+      }
+
+      return false;
+    } catch (err) {
+      console.warn('Postcode resolution failed:', err);
+      return false;
+    }
+  }
+
+  async function findAndLoadNearestOutcode(lat, lon, originalDistrict) {
+    if (!state.outcodesIndex || !state.outcodesIndex.outcodes || state.outcodesIndex.outcodes.length === 0) {
+      return false;
+    }
+
+    let nearest = null;
+    let minDistance = Infinity;
+
+    for (const item of state.outcodesIndex.outcodes) {
+      if (!item.lat || !item.lon) continue;
+      const d = calculateDistanceMiles(lat, lon, item.lat, item.lon);
+      if (d < minDistance) {
+        minDistance = d;
+        nearest = item;
+      }
+    }
+
+    if (!nearest) return false;
+
+    showStatus(
+      `No forecourts recorded directly in ${originalDistrict}. Showing nearest stations in ${nearest.outcode} (${minDistance.toFixed(1)} miles away).`,
+      'alert-info'
+    );
+    await loadOutcode(nearest.outcode, true);
+    return true;
+  }
+
+  function calculateDistanceMiles(lat1, lon1, lat2, lon2) {
+    const R = 3958.8; // Earth radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   }
 
   function parseOutcodeFromInput(input) {
@@ -246,8 +360,9 @@
       return;
     }
 
+    const candidate = parseOutcodeFromInput(query);
     const matches = state.outcodesIndex.outcodes.filter((item) =>
-      item.outcode.startsWith(query)
+      item.outcode === candidate || item.outcode.startsWith(candidate) || item.outcode.startsWith(query)
     );
 
     if (matches.length === 0) {
@@ -291,13 +406,15 @@
   }
 
   // --- Outcode Data Loader ---
-  async function loadOutcode(outcode) {
+  async function loadOutcode(outcode, keepStatus = false) {
     if (!outcode) return;
     const cleanOutcode = outcode.toUpperCase();
     state.currentOutcode = cleanOutcode;
     searchInput.value = cleanOutcode;
 
-    showStatus(`Fetching prices for district ${cleanOutcode}...`, 'alert-info');
+    if (!keepStatus) {
+      showStatus(`Fetching prices for district ${cleanOutcode}...`, 'alert-info');
+    }
 
     try {
       const res = await fetch(`data/outcodes/${cleanOutcode}.json`);
@@ -315,7 +432,9 @@
       state.currentPayload = payload;
       state.stations = payload.stations || [];
 
-      clearStatus();
+      if (!keepStatus) {
+        clearStatus();
+      }
       updateFreshnessBadge(payload.updated_at);
       renderStations();
     } catch (err) {

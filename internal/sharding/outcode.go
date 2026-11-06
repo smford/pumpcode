@@ -35,6 +35,8 @@ type OutcodePayload struct {
 type OutcodeIndexItem struct {
 	Outcode      string             `json:"outcode"`
 	StationCount int                `json:"station_count"`
+	Lat          float64            `json:"lat,omitempty"`
+	Lon          float64            `json:"lon,omitempty"`
 	MinPrices    map[string]float64 `json:"min_prices,omitempty"`
 }
 
@@ -136,9 +138,17 @@ func ShardAndWrite(stations []Station, opts ShardOptions) (*IndexPayload, error)
 			defer wg.Done()
 			defer func() { <-semaphore }()
 
-			// Calculate minimum prices for diesel (B7) and petrol (E10)
+			// Calculate minimum prices and center coordinates
 			minPrices := make(map[string]float64)
+			var sumLat, sumLon float64
+			var validCoords int
+
 			for _, st := range list {
+				if st.Lat != 0 || st.Lon != 0 {
+					sumLat += st.Lat
+					sumLon += st.Lon
+					validCoords++
+				}
 				for grade, price := range st.Prices {
 					if price <= 0 {
 						continue
@@ -147,6 +157,12 @@ func ShardAndWrite(stations []Station, opts ShardOptions) (*IndexPayload, error)
 						minPrices[grade] = price
 					}
 				}
+			}
+
+			var avgLat, avgLon float64
+			if validCoords > 0 {
+				avgLat = float64(int(sumLat/float64(validCoords)*10000)) / 10000
+				avgLon = float64(int(sumLon/float64(validCoords)*10000)) / 10000
 			}
 
 			payload := OutcodePayload{
@@ -171,6 +187,8 @@ func ShardAndWrite(stations []Station, opts ShardOptions) (*IndexPayload, error)
 			indexItems = append(indexItems, OutcodeIndexItem{
 				Outcode:      oc,
 				StationCount: len(list),
+				Lat:          avgLat,
+				Lon:          avgLon,
 				MinPrices:    minPrices,
 			})
 			indexMutex.Unlock()
