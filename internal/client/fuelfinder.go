@@ -22,6 +22,7 @@ import (
 type Config struct {
 	ClientID         string
 	ClientSecret     string
+	Scope            string
 	TokenURL         string
 	BaseURL          string
 	StationsEndpoint string
@@ -104,6 +105,11 @@ func (c *Client) GetToken(ctx context.Context) (string, error) {
 	form.Set("grant_type", "client_credentials")
 	form.Set("client_id", c.cfg.ClientID)
 	form.Set("client_secret", c.cfg.ClientSecret)
+	if c.cfg.Scope != "" {
+		form.Set("scope", c.cfg.Scope)
+	} else {
+		form.Set("scope", "fuelfinder.read")
+	}
 
 	var tokenResp OAuthTokenResponse
 	err := c.executeWithRetry(ctx, func() (*http.Response, error) {
