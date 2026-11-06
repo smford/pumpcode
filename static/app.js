@@ -28,6 +28,7 @@
   const resultsHeader = document.getElementById('results-header');
   const resultsTitle = document.getElementById('results-title');
   const resultsCount = document.getElementById('results-count');
+  const resultsSummary = document.getElementById('results-summary');
   const stationsGrid = document.getElementById('stations-grid');
   const quickOutcodesContainer = document.getElementById('quick-outcodes');
   const gradeRadios = document.querySelectorAll('input[name="fuel-grade"]');
@@ -111,8 +112,8 @@
     if (!outcodes || !outcodes.length) return;
     quickOutcodesContainer.innerHTML = '';
 
-    // Show up to 6 top outcodes as quick buttons
-    const sample = outcodes.slice(0, 6);
+    // Show up to 8 top outcodes as quick buttons
+    const sample = outcodes.slice(0, 8);
     sample.forEach((item) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -178,7 +179,7 @@
         }
       }
       // If direct outcode has no station or lookup was inconclusive, find nearest with stations
-      await findAndLoadNearestOutcode(lat, lon, 'your current location');
+      await findAndLoadNearestOutcode(lat, lon, 'your location');
     } catch (err) {
       console.warn('Coordinate resolution failed:', err);
       fallbackToFirstOutcode();
@@ -297,7 +298,7 @@
 
       return false;
     } catch (err) {
-      console.warn('Postcode resolution failed:', err);
+      console.warn('Postcode resolution error:', err);
       return false;
     }
   }
@@ -459,6 +460,37 @@
     resultsTitle.textContent = `Forecourts in ${outcode}`;
     resultsCount.textContent = `${stationsWithPrices.length} forecourt${stationsWithPrices.length === 1 ? '' : 's'}`;
 
+    // Calculate Price Statistics for Summary Bar
+    if (resultsSummary) {
+      resultsSummary.innerHTML = '';
+      const pricedOnly = stationsWithPrices.filter((s) => s.prices && s.prices[grade] && s.prices[grade] > 0);
+
+      if (pricedOnly.length > 0) {
+        const lowest = pricedOnly[0].prices[grade];
+        const highest = pricedOnly[pricedOnly.length - 1].prices[grade];
+        const sum = pricedOnly.reduce((acc, s) => acc + s.prices[grade], 0);
+        const avg = sum / pricedOnly.length;
+        const spread = highest - lowest;
+
+        const lowPill = document.createElement('span');
+        lowPill.className = 'summary-pill summary-pill-highlight';
+        lowPill.textContent = `Lowest: ${lowest.toFixed(1)}p`;
+        resultsSummary.appendChild(lowPill);
+
+        const avgPill = document.createElement('span');
+        avgPill.className = 'summary-pill';
+        avgPill.textContent = `Average: ${avg.toFixed(1)}p`;
+        resultsSummary.appendChild(avgPill);
+
+        if (pricedOnly.length > 1 && spread > 0) {
+          const spreadPill = document.createElement('span');
+          spreadPill.className = 'summary-pill';
+          spreadPill.textContent = `Spread: ${spread.toFixed(1)}p`;
+          resultsSummary.appendChild(spreadPill);
+        }
+      }
+    }
+
     stationsGrid.innerHTML = '';
 
     if (stationsWithPrices.length === 0) {
@@ -506,21 +538,36 @@
     const identity = document.createElement('div');
     identity.className = 'station-identity';
 
-    const brand = document.createElement('span');
-    brand.className = 'brand-tag';
-    brand.textContent = station.brand || 'Forecourt';
+    const brandName = station.brand || 'Forecourt';
+    const brandBadge = document.createElement('span');
+    const brandSlug = brandName.toLowerCase().replace(/[^a-z]/g, '');
+    brandBadge.className = `brand-badge brand-${brandSlug}`;
+    brandBadge.textContent = brandName;
 
     const name = document.createElement('h3');
     name.className = 'station-name';
-    name.textContent = station.name || station.brand;
+    name.textContent = station.name || brandName;
+
+    const metaRow = document.createElement('div');
+    metaRow.className = 'station-meta-row';
 
     const postcode = document.createElement('span');
     postcode.className = 'station-postcode';
     postcode.textContent = station.postcode || '';
+    metaRow.appendChild(postcode);
 
-    identity.appendChild(brand);
+    // Compute approximate distance if user coordinates are known
+    if (state.userCoords && station.lat && station.lon) {
+      const distMiles = calculateDistanceMiles(state.userCoords.lat, state.userCoords.lon, station.lat, station.lon);
+      const distBadge = document.createElement('span');
+      distBadge.className = 'station-distance';
+      distBadge.textContent = `${distMiles.toFixed(1)} mi away`;
+      metaRow.appendChild(distBadge);
+    }
+
+    identity.appendChild(brandBadge);
     identity.appendChild(name);
-    identity.appendChild(postcode);
+    identity.appendChild(metaRow);
 
     const priceBox = document.createElement('div');
     priceBox.className = 'primary-price-box';
@@ -531,7 +578,7 @@
 
     const priceUnit = document.createElement('div');
     priceUnit.className = 'price-unit';
-    priceUnit.textContent = `${grade} per litre`;
+    priceUnit.textContent = `${grade} / L`;
 
     priceBox.appendChild(priceValue);
     priceBox.appendChild(priceUnit);
@@ -578,13 +625,19 @@
     actions.className = 'card-actions';
 
     const directionsLink = document.createElement('a');
-    directionsLink.className = 'btn btn-primary';
+    directionsLink.className = 'btn btn-primary btn-directions';
     directionsLink.target = '_blank';
     directionsLink.rel = 'noopener noreferrer';
 
     // Direct link to open navigation in Google Maps / Apple Maps
     directionsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(station.lat)},${encodeURIComponent(station.lon)}`;
-    directionsLink.textContent = 'Get Directions';
+    directionsLink.innerHTML = `
+      <span>Get Directions</span>
+      <svg class="directions-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+        <polyline points="12 5 19 12 12 19"></polyline>
+      </svg>
+    `;
 
     actions.appendChild(directionsLink);
     card.appendChild(actions);
@@ -593,7 +646,17 @@
   }
 
   function formatAmenityName(raw) {
-    return raw.replace(/_/g, ' ');
+    const map = {
+      car_wash: 'Car Wash',
+      air_water: 'Air & Water',
+      shop: 'Convenience Store',
+      pay_at_pump: 'Pay at Pump',
+      atm: 'ATM',
+      costa_coffee: 'Coffee',
+      deli: 'Deli',
+      mands_food: 'M&S Food'
+    };
+    return map[raw] || raw.replace(/_/g, ' ');
   }
 
   // --- Freshness & Time Helpers ---

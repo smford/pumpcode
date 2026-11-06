@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="PumpCode - Automated, zero-cost, real-time UK fuel price tracker for filling stations and forecourts.">
   <meta name="color-scheme" content="light dark">
   <script>
@@ -21,15 +21,37 @@
   <header class="site-header">
     <div class="header-inner container">
       <div class="brand-group">
-        <h1 class="logo-text">Pump<span class="logo-accent">Code</span></h1>
-        <span class="tagline">UK Fuel Price Tracker</span>
+        <div class="logo-icon-wrapper" aria-hidden="true">
+          <svg class="logo-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18"/>
+            <path d="M15 10h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L20.5 6.5"/>
+            <rect x="6" y="5" width="6" height="5" rx="1"/>
+            <path d="M6 15h6"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="logo-text">Pump<span class="logo-accent">Code</span></h1>
+          <span class="tagline">UK Fuel Price Tracker</span>
+        </div>
       </div>
 
       <div class="header-actions">
-        <span id="freshness-badge" class="badge freshness-badge" aria-live="polite">Checking data freshness...</span>
-        <button id="theme-toggle" class="btn btn-icon" type="button" aria-label="Toggle light and dark color scheme" title="Toggle theme">
-          <span class="theme-icon light-icon" aria-hidden="true">&#9728;</span>
-          <span class="theme-icon dark-icon" aria-hidden="true">&#9790;</span>
+        <span id="freshness-badge" class="badge freshness-badge" aria-live="polite">Checking data...</span>
+        <button id="theme-toggle" class="btn btn-icon theme-toggle-btn" type="button" aria-label="Toggle light and dark color scheme" title="Toggle theme">
+          <svg class="theme-icon light-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2"/>
+            <path d="M12 20v2"/>
+            <path d="m4.93 4.93 1.41 1.41"/>
+            <path d="m17.66 17.66 1.41 1.41"/>
+            <path d="M2 12h2"/>
+            <path d="M20 12h2"/>
+            <path d="m6.34 17.66-1.41 1.41"/>
+            <path d="m19.07 4.93-1.41 1.41"/>
+          </svg>
+          <svg class="theme-icon dark-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+          </svg>
         </button>
       </div>
     </div>
@@ -37,27 +59,40 @@
 
   <main class="container">
     <section class="controls-panel" aria-label="Search and filter forecourts">
-      <form id="search-form" class="search-row" role="search" onsubmit="return false;">
+      <form id="search-form" class="search-form" role="search" onsubmit="return false;">
         <div class="search-input-wrapper">
+          <svg class="search-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.3-4.3"/>
+          </svg>
           <label for="outcode-search" class="visually-hidden">Search by UK Outcode or Postcode</label>
           <input
             type="search"
             id="outcode-search"
             class="input-search"
-            placeholder="Enter UK Outcode or full Postcode (e.g. CV3 4AR, SW1A 1AA)..."
+            placeholder="Search outcode or full postcode (e.g. CV3 4AR, SW1A)..."
             autocomplete="off"
             spellcheck="false"
           >
           <div id="autocomplete-list" class="autocomplete-list" role="listbox" hidden></div>
         </div>
 
-        <button id="search-btn" class="btn btn-primary" type="submit">
-          Search
-        </button>
-
-        <button id="locate-btn" class="btn btn-secondary" type="button">
-          <span class="btn-icon-text" aria-hidden="true">&#x25CE;</span> Use My Location
-        </button>
+        <div class="search-buttons">
+          <button id="search-btn" class="btn btn-primary btn-search-submit" type="submit">
+            Search
+          </button>
+          <button id="locate-btn" class="btn btn-secondary btn-locate" type="button" title="Detect current district using GPS">
+            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 2v3"/>
+              <path d="M12 19v3"/>
+              <path d="M2 12h3"/>
+              <path d="M19 12h3"/>
+            </svg>
+            <span>Near Me</span>
+          </button>
+        </div>
       </form>
 
       <div class="filter-row">
@@ -73,8 +108,11 @@
           <label for="grade-e5" class="toggle-label">Super (E5)</label>
         </fieldset>
 
-        <div class="quick-outcodes" id="quick-outcodes" aria-label="Popular districts">
-          <!-- Populated from index.json -->
+        <div class="quick-outcodes-wrapper">
+          <span class="quick-label">Popular:</span>
+          <div class="quick-outcodes" id="quick-outcodes" aria-label="Popular districts">
+            <!-- Populated from index.json -->
+          </div>
         </div>
       </div>
     </section>
@@ -83,8 +121,13 @@
 
     <section id="results-section" class="results-section" aria-label="Fuel stations">
       <div class="results-header" id="results-header" hidden>
-        <h2 id="results-title">Stations</h2>
-        <span id="results-count" class="badge">0 stations</span>
+        <div class="results-title-group">
+          <h2 id="results-title">Forecourts</h2>
+          <span id="results-count" class="badge">0 forecourts</span>
+        </div>
+        <div id="results-summary" class="results-summary">
+          <!-- Summary pills (lowest, average) populated by app.js -->
+        </div>
       </div>
 
       <div id="stations-grid" class="stations-grid">
@@ -95,7 +138,7 @@
 
   <footer class="site-footer">
     <div class="container footer-inner">
-      <p>Data provided via UK Fuel Finder Open Data Scheme.</p>
+      <p>Data sourced from UK Fuel Finder &amp; CMA Open Data Schemes.</p>
       <p>PumpCode &bull; Zero build step, static edge hosting on GitHub Pages.</p>
     </div>
   </footer>
