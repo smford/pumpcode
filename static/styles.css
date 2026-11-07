@@ -4,6 +4,8 @@
    ========================================================================== */
 
 :root {
+  color-scheme: light dark;
+
   /* Daylight Theme (Crisp, High-Contrast, Contemporary) */
   --bg-app: #f8fafc;
   --bg-surface: #ffffff;
@@ -27,6 +29,10 @@
   --emerald-bg: #ecfdf5;
   --emerald-border: #a7f3d0;
   --emerald-glow: rgba(5, 150, 105, 0.15);
+
+  /* Gold / Star Accent */
+  --star-gold: #f59e0b;
+  --star-gold-bg: #fef3c7;
 
   /* Segmented Controls & Pills */
   --pill-bg: #e2e8f0;
@@ -56,8 +62,53 @@
   --transition-smooth: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Automatic Dark Mode according to user device preference */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --bg-app: #090d16;
+    --bg-surface: #111827;
+    --bg-surface-elevated: #1e293b;
+    --bg-input: #0f172a;
+    --border-subtle: #1e293b;
+    --border-strong: #334155;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent-primary: #f8fafc;
+    --accent-text: #090d16;
+
+    /* Primary Brand Blue */
+    --brand-blue: #38bdf8;
+    --brand-blue-hover: #7dd3fc;
+    --brand-blue-bg: rgba(56, 189, 248, 0.12);
+
+    /* Emerald (Cheapest) */
+    --emerald-cheapest: #10b981;
+    --emerald-bg: rgba(16, 185, 129, 0.12);
+    --emerald-border: rgba(16, 185, 129, 0.35);
+    --emerald-glow: rgba(16, 185, 129, 0.25);
+
+    /* Gold / Star Accent */
+    --star-gold: #fbbf24;
+    --star-gold-bg: rgba(251, 191, 36, 0.15);
+
+    /* Segmented Controls & Pills */
+    --pill-bg: #1e293b;
+    --pill-hover: #334155;
+    --pill-active-bg: #38bdf8;
+    --pill-active-text: #090d16;
+
+    /* Elevation & Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    --shadow-card: 0 2px 12px -2px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.05);
+    --shadow-card-hover: 0 8px 24px -2px rgba(0, 0, 0, 0.6), 0 0 1px 1px rgba(255, 255, 255, 0.1);
+  }
+}
+
 html.dark {
-  /* Midnight Cabin Theme (Low Glare, Deep Slate, High Contrast) */
+  /* Explicit Dark Mode override */
   --bg-app: #090d16;
   --bg-surface: #111827;
   --bg-surface-elevated: #1e293b;
@@ -81,6 +132,10 @@ html.dark {
   --emerald-border: rgba(16, 185, 129, 0.35);
   --emerald-glow: rgba(16, 185, 129, 0.25);
 
+  /* Gold / Star Accent */
+  --star-gold: #fbbf24;
+  --star-gold-bg: rgba(251, 191, 36, 0.15);
+
   /* Segmented Controls & Pills */
   --pill-bg: #1e293b;
   --pill-hover: #334155;
@@ -93,6 +148,49 @@ html.dark {
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
   --shadow-card: 0 2px 12px -2px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.05);
   --shadow-card-hover: 0 8px 24px -2px rgba(0, 0, 0, 0.6), 0 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+html.light {
+  /* Explicit Light Mode override */
+  --bg-app: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f1f5f9;
+  --bg-input: #ffffff;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --accent-primary: #0f172a;
+  --accent-text: #ffffff;
+
+  /* Primary Brand Blue */
+  --brand-blue: #0284c7;
+  --brand-blue-hover: #0369a1;
+  --brand-blue-bg: #e0f2fe;
+
+  /* Emerald (Cheapest Price Highlight) */
+  --emerald-cheapest: #059669;
+  --emerald-bg: #ecfdf5;
+  --emerald-border: #a7f3d0;
+  --emerald-glow: rgba(5, 150, 105, 0.15);
+
+  /* Gold / Star Accent */
+  --star-gold: #f59e0b;
+  --star-gold-bg: #fef3c7;
+
+  /* Segmented Controls & Pills */
+  --pill-bg: #e2e8f0;
+  --pill-hover: #cbd5e1;
+  --pill-active-bg: #0f172a;
+  --pill-active-text: #ffffff;
+
+  /* Elevation & Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
+  --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --shadow-card-hover: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
 }
 
 /* ==========================================================================
@@ -312,6 +410,59 @@ html.dark .logo-icon-box {
   flex-shrink: 0;
 }
 
+/* Standalone / PWA Refresh Button */
+.btn-refresh {
+  height: 2.35rem;
+  padding: 0 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: transform var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.btn-refresh:hover {
+  background-color: var(--border-subtle);
+  color: var(--brand-blue);
+}
+
+.btn-refresh:active {
+  transform: scale(0.94);
+}
+
+.refresh-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.refresh-icon.is-spinning {
+  animation: refresh-spin 0.8s linear infinite;
+}
+
+@keyframes refresh-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 480px) {
+  .refresh-text,
+  .install-text {
+    display: none;
+  }
+  .btn-refresh,
+  .btn-install-pwa {
+    padding: 0 0.6rem;
+  }
+}
+
 /* Theme Toggle Button */
 .btn-theme-toggle {
   width: 2.35rem;
@@ -340,10 +491,19 @@ html.dark .logo-icon-box {
   height: 1.2rem;
 }
 
+/* Theme Icon Visibility - Adapts automatically to device scheme + explicit toggle */
+.light-icon { display: none; }
+.dark-icon { display: block; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .light-icon { display: block; }
+  :root:not(.light) .dark-icon { display: none; }
+}
+
 html.dark .light-icon { display: block; }
 html.dark .dark-icon { display: none; }
-html:not(.dark) .light-icon { display: none; }
-html:not(.dark) .dark-icon { display: block; }
+html.light .light-icon { display: none; }
+html.light .dark-icon { display: block; }
 
 /* ==========================================================================
    Main Content Layout
@@ -592,6 +752,210 @@ html.dark .search-bar-wrapper:focus-within {
 }
 
 /* ==========================================================================
+   Important Postcodes Section
+   ========================================================================== */
+
+.important-postcodes-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.85rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.important-postcodes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.important-title-box {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.star-badge-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: var(--star-gold);
+  flex-shrink: 0;
+}
+
+.important-title {
+  font-size: 0.8rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.btn-add-postcode-inline {
+  height: 1.75rem;
+  padding: 0 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-add-postcode-inline:hover {
+  background-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.plus-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.important-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0.15rem 0;
+  min-height: 2.2rem;
+}
+
+.important-chips-row::-webkit-scrollbar {
+  display: none;
+}
+
+.chips-empty-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 0.2rem 0;
+}
+
+.postcode-chip {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 0.25rem 0.35rem 0.25rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: var(--text-primary);
+  white-space: nowrap;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.postcode-chip:hover {
+  border-color: var(--border-strong);
+  background-color: var(--pill-hover);
+}
+
+.postcode-chip.is-active {
+  background-color: var(--brand-blue-bg);
+  border-color: var(--brand-blue);
+  color: var(--brand-blue);
+  box-shadow: 0 0 0 1px var(--brand-blue);
+}
+
+.chip-remove-btn {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.chip-remove-btn:hover {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* Inline Add Form */
+.add-postcode-form {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.add-postcode-input {
+  flex: 1;
+  max-width: 200px;
+  height: 2rem;
+  padding: 0 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.add-postcode-input:focus {
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 2px var(--brand-blue-bg);
+}
+
+.btn-save-postcode-submit {
+  height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  background-color: var(--brand-blue);
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.btn-save-postcode-submit:hover {
+  opacity: 0.9;
+}
+
+.btn-cancel-postcode-inline {
+  height: 2rem;
+  padding: 0 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background-color: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-cancel-postcode-inline:hover {
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
    Status Alerts
    ========================================================================== */
 
@@ -657,8 +1021,24 @@ html.dark .search-bar-wrapper:focus-within {
 
 .district-title-box {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+@media (min-width: 480px) {
+  .district-title-box {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.65rem;
+  }
+}
+
+.district-title-row {
+  display: flex;
   align-items: center;
   gap: 0.65rem;
+  flex-wrap: wrap;
 }
 
 .district-title {
@@ -666,6 +1046,49 @@ html.dark .search-bar-wrapper:focus-within {
   font-weight: 850;
   letter-spacing: -0.02em;
   color: var(--text-primary);
+}
+
+.btn-save-postcode {
+  height: 1.85rem;
+  padding: 0 0.6rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-save-postcode:hover {
+  border-color: var(--star-gold);
+  color: var(--text-primary);
+}
+
+.btn-save-postcode .star-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: var(--text-muted);
+  transition: color var(--transition-fast), fill var(--transition-fast);
+}
+
+.btn-save-postcode:hover .star-icon {
+  color: var(--star-gold);
+}
+
+.btn-save-postcode.is-saved {
+  background-color: var(--star-gold-bg);
+  border-color: var(--star-gold);
+  color: var(--text-primary);
+}
+
+.btn-save-postcode.is-saved .star-icon {
+  color: var(--star-gold);
+  fill: var(--star-gold);
 }
 
 .badge-count {

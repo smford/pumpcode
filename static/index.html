@@ -6,8 +6,9 @@
   <meta name="description" content="PumpCode - Real-time UK fuel price tracker for forecourts and filling stations. Find the cheapest Unleaded E10, Diesel B7, and Super E5 nearby.">
   <title>PumpCode | UK Fuel Price Tracker</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#f4f6f8" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0b0f17" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#090d16" media="(prefers-color-scheme: dark)">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,15 +19,16 @@
   <script>
     (function () {
       const saved = localStorage.getItem('pumpcode-theme');
-      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (saved === 'dark' || (!saved && systemDark)) {
+      if (saved === 'dark') {
         document.documentElement.classList.add('dark');
-      } else {
+        document.documentElement.classList.remove('light');
+      } else if (saved === 'light') {
+        document.documentElement.classList.add('light');
         document.documentElement.classList.remove('dark');
       }
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
   <!-- Header -->
@@ -56,6 +58,12 @@
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
           <span class="install-text">Install</span>
+        </button>
+        <button id="btn-refresh-data" class="btn-refresh" type="button" aria-label="Refresh fuel prices" title="Refresh fuel prices">
+          <svg class="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
+          </svg>
+          <span class="refresh-text">Refresh</span>
         </button>
         <button id="theme-toggle" class="btn-theme-toggle" type="button" aria-label="Toggle display theme" title="Toggle theme">
           <svg class="theme-icon light-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -113,6 +121,35 @@
         </div>
       </form>
 
+      <!-- Important Postcodes Bar -->
+      <div id="important-postcodes-section" class="important-postcodes-section" aria-label="Important Postcodes">
+        <div class="important-postcodes-header">
+          <div class="important-title-box">
+            <svg class="star-badge-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <span class="important-title">Important Postcodes</span>
+          </div>
+          <button id="btn-add-postcode-inline" class="btn-add-postcode-inline" type="button" aria-label="Add important postcode" title="Add postcode">
+            <svg class="plus-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Add</span>
+          </button>
+        </div>
+
+        <!-- Postcode Chips List -->
+        <div id="important-chips-row" class="important-chips-row" role="toolbar" aria-label="Important postcodes list"></div>
+
+        <!-- Inline Add Form -->
+        <div id="add-postcode-form" class="add-postcode-form" hidden>
+          <input type="text" id="add-postcode-input" class="add-postcode-input" placeholder="e.g. SS2, SW1A, CV3..." maxlength="10" autocomplete="off" spellcheck="false" aria-label="Postcode to save">
+          <button id="btn-save-postcode-submit" class="btn-save-postcode-submit" type="button">Save</button>
+          <button id="btn-cancel-postcode-inline" class="btn-cancel-postcode-inline" type="button">Cancel</button>
+        </div>
+      </div>
+
       <!-- Fuel Grade Filter Bar -->
       <div class="filters-bar">
         <fieldset class="segmented-grade-control" aria-label="Select Fuel Grade">
@@ -137,7 +174,15 @@
       <!-- District Overview Bar -->
       <div class="district-overview" id="results-header" hidden>
         <div class="district-title-box">
-          <h2 id="results-title" class="district-title">Forecourts</h2>
+          <div class="district-title-row">
+            <h2 id="results-title" class="district-title">Forecourts</h2>
+            <button id="btn-save-current-postcode" class="btn-save-postcode" type="button" title="Save this district to Important Postcodes" aria-label="Save this district to Important Postcodes">
+              <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              <span id="save-postcode-text">Save Postcode</span>
+            </button>
+          </div>
           <span id="results-count" class="badge-count">0 stations</span>
         </div>
 
@@ -153,6 +198,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>

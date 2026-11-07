@@ -41,6 +41,7 @@
     setupGradeSelector();
     setupSearch();
     setupGeolocation();
+    setupImportantPostcodes();
 
     // Load master index
     await loadIndex();
@@ -50,14 +51,40 @@
   }
 
   // --- Progressive Web App (PWA) Setup ---
+  function isAppInstalled() {
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true ||
+      document.referrer.startsWith('android-app://')
+    );
+  }
+
   function setupPWA() {
     const installBtn = document.getElementById('btn-pwa-install');
+    const refreshBtn = document.getElementById('btn-refresh-data');
     let deferredPrompt = null;
+
+    function syncButtons() {
+      const installed = isAppInstalled();
+      if (installed) {
+        // When PWA is installed, replace the install button with a refresh button
+        if (installBtn) installBtn.hidden = true;
+        if (refreshBtn) refreshBtn.hidden = false;
+      } else {
+        // When running in a browser, keep refresh button available and show install if promptable
+        if (refreshBtn) refreshBtn.hidden = false;
+        if (installBtn) {
+          installBtn.hidden = !deferredPrompt;
+        }
+      }
+    }
+
+    syncButtons();
 
     // Register Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=13')
+        navigator.serviceWorker.register('./sw.js?v=14')
           .then((registration) => {
             registration.update();
             console.log('PumpCode PWA Service Worker registered:', registration.scope);
@@ -70,11 +97,10 @@
 
     // Capture install prompt for Chrome/Android
     window.addEventListener('beforeinstallprompt', (e) => {
+      if (isAppInstalled()) return;
       e.preventDefault();
       deferredPrompt = e;
-      if (installBtn) {
-        installBtn.hidden = false;
-      }
+      syncButtons();
     });
 
     if (installBtn) {
@@ -85,35 +111,114 @@
         const choiceResult = await deferredPrompt.userChoice;
         console.log('PWA prompt user choice:', choiceResult.outcome);
         deferredPrompt = null;
+        syncButtons();
       });
     }
 
     window.addEventListener('appinstalled', () => {
-      if (installBtn) installBtn.hidden = true;
       deferredPrompt = null;
+      syncButtons();
       console.log('PumpCode PWA installed successfully.');
     });
+
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', async () => {
+        await triggerDataRefresh();
+      });
+    }
+  }
+
+  // --- Tactical Refresh Mechanism ---
+  async function triggerDataRefresh() {
+    const refreshBtn = document.getElementById('btn-refresh-data');
+    const icon = refreshBtn ? refreshBtn.querySelector('.refresh-icon') : null;
+    if (icon) icon.classList.add('is-spinning');
+
+    try {
+      showStatus('Checking for latest fuel price updates...', 'alert-info');
+      await loadIndex(true);
+      if (state.currentOutcode) {
+        await loadOutcode(state.currentOutcode, false, true);
+      }
+      showStatus('Fuel prices updated', 'alert-info');
+      setTimeout(clearStatus, 2500);
+    } catch (err) {
+      console.warn('Failed to refresh fuel prices:', err);
+      showStatus('Unable to refresh prices. Showing cached data.', 'alert-warning');
+    } finally {
+      if (icon) {
+        setTimeout(() => icon.classList.remove('is-spinning'), 600);
+      }
+    }
   }
 
   // --- Theme Management ---
   function setupThemeToggle() {
-    themeToggle.addEventListener('click', () => {
-      const isDark = document.documentElement.classList.toggle('dark');
-      try {
-        localStorage.setItem('pumpcode-theme', isDark ? 'dark' : 'light');
-      } catch (_) {}
-    });
+    function getEffectiveTheme() {
+      const saved = localStorage.getItem('pumpcode-theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
 
-    // Listen to OS scheme changes if user hasn't explicitly set a preference
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      if (!localStorage.getItem('pumpcode-theme')) {
-        if (e.matches) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
+    function applyTheme(theme) {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+      } else if (theme === 'light') {
+        document.documentElement.classList.add('light');
+        document.documentElement.classList.remove('dark');
+      } else {
+        // Auto: adapts automatically to user's device/OS setting
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.remove('light');
+      }
+      updateThemeUI();
+    }
+
+    function updateThemeUI() {
+      const saved = localStorage.getItem('pumpcode-theme');
+      const effective = getEffectiveTheme();
+      const modeDesc = saved ? (saved === 'dark' ? 'Dark' : 'Light') : `Auto (${effective === 'dark' ? 'Dark' : 'Light'})`;
+      themeToggle.setAttribute('title', `Theme: ${modeDesc} (Click to switch)`);
+      themeToggle.setAttribute('aria-label', `Theme: ${modeDesc}`);
+
+      // Sync meta theme-color so PWA status bar / browser chrome matches light/dark surface
+      const metaTheme = document.querySelectorAll('meta[name="theme-color"]');
+      const barColor = effective === 'dark' ? '#090d16' : '#f8fafc';
+      metaTheme.forEach((meta) => {
+        meta.setAttribute('content', barColor);
+      });
+    }
+
+    themeToggle.addEventListener('click', () => {
+      const saved = localStorage.getItem('pumpcode-theme');
+      const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+      // Cycle: Auto (matches device) -> Light -> Dark -> Auto
+      if (!saved) {
+        const next = isSystemDark ? 'light' : 'dark';
+        localStorage.setItem('pumpcode-theme', next);
+        applyTheme(next);
+      } else if (saved === 'light') {
+        localStorage.setItem('pumpcode-theme', 'dark');
+        applyTheme('dark');
+      } else {
+        // Reset to system auto
+        localStorage.removeItem('pumpcode-theme');
+        applyTheme(null);
       }
     });
+
+    // Automatically adjust in real time whenever user changes their device system setting
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (!localStorage.getItem('pumpcode-theme')) {
+        applyTheme(null);
+      } else {
+        updateThemeUI();
+      }
+    });
+
+    updateThemeUI();
   }
 
   // --- Grade Selector (In-Memory Re-sorting) ---
@@ -129,9 +234,11 @@
   }
 
   // --- Master Index Loader ---
-  async function loadIndex() {
+  async function loadIndex(forceReload = false) {
     try {
-      const res = await fetch('data/outcodes/index.json');
+      const url = forceReload ? `data/outcodes/index.json?_t=${Date.now()}` : 'data/outcodes/index.json';
+      const fetchOpts = forceReload ? { cache: 'reload' } : {};
+      const res = await fetch(url, fetchOpts);
       if (!res.ok) {
         throw new Error(`Failed to load index: ${res.status}`);
       }
@@ -420,7 +527,7 @@
   }
 
   // --- Outcode Data Loader ---
-  async function loadOutcode(outcode, keepStatus = false) {
+  async function loadOutcode(outcode, keepStatus = false, forceReload = false) {
     if (!outcode) return;
     const cleanOutcode = outcode.toUpperCase();
     state.currentOutcode = cleanOutcode;
@@ -431,7 +538,9 @@
     }
 
     try {
-      const res = await fetch(`data/outcodes/${cleanOutcode}.json`);
+      const url = forceReload ? `data/outcodes/${cleanOutcode}.json?_t=${Date.now()}` : `data/outcodes/${cleanOutcode}.json`;
+      const fetchOpts = forceReload ? { cache: 'reload' } : {};
+      const res = await fetch(url, fetchOpts);
       if (!res.ok) {
         if (res.status === 404) {
           showStatus(`No forecourt records found for district "${cleanOutcode}".`, 'alert-warning');
@@ -470,11 +579,12 @@
             .slice(0, 3);
 
           if (adjacentDistricts.length > 0) {
-            const neighborPromises = adjacentDistricts.map((adj) =>
-              fetch(`data/outcodes/${adj.outcode}.json`)
+            const neighborPromises = adjacentDistricts.map((adj) => {
+              const adjUrl = forceReload ? `data/outcodes/${adj.outcode}.json?_t=${Date.now()}` : `data/outcodes/${adj.outcode}.json`;
+              return fetch(adjUrl, fetchOpts)
                 .then((r) => (r.ok ? r.json() : null))
-                .catch(() => null)
-            );
+                .catch(() => null);
+            });
 
             const neighborResults = await Promise.allSettled(neighborPromises);
             const stationMap = new Map();
@@ -535,6 +645,10 @@
       ? `Forecourts in & near ${outcode}`
       : `Forecourts in ${outcode}`;
     resultsCount.textContent = `${stationsWithPrices.length} forecourt${stationsWithPrices.length === 1 ? '' : 's'}`;
+
+    // Update Save District Star button & Active Chip highlight
+    updateSaveDistrictButton();
+    renderImportantChips();
 
     // Compute District Statistics Strip (Lowest, Average, Spread)
     if (resultsSummary) {
@@ -832,5 +946,219 @@
       "'": '&#39;',
       '"': '&quot;'
     }[tag] || tag));
+  }
+
+  // ==========================================================================
+  // Important Postcodes Feature (Persistent 1-Tap Search)
+  // ==========================================================================
+  const IMPORTANT_POSTCODES_KEY = 'pumpcode-important-postcodes';
+
+  function getImportantPostcodes() {
+    try {
+      const raw = localStorage.getItem(IMPORTANT_POSTCODES_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveImportantPostcodes(list) {
+    try {
+      localStorage.setItem(IMPORTANT_POSTCODES_KEY, JSON.stringify(list));
+    } catch (_) {}
+    renderImportantChips();
+    updateSaveDistrictButton();
+  }
+
+  function addImportantPostcode(raw) {
+    if (!raw) return false;
+    const clean = raw.trim().toUpperCase().replace(/[^A-Z0-9 ]/g, '');
+    if (!clean) return false;
+
+    const list = getImportantPostcodes();
+    if (list.some((item) => item.postcode === clean)) {
+      return false;
+    }
+    list.push({ postcode: clean });
+    saveImportantPostcodes(list);
+    return true;
+  }
+
+  function removeImportantPostcode(raw) {
+    if (!raw) return;
+    const clean = raw.trim().toUpperCase().replace(/[^A-Z0-9 ]/g, '');
+    const list = getImportantPostcodes().filter((item) => item.postcode !== clean);
+    saveImportantPostcodes(list);
+  }
+
+  function isPostcodeSaved(raw) {
+    if (!raw) return false;
+    const clean = raw.trim().toUpperCase().replace(/[^A-Z0-9 ]/g, '');
+    return getImportantPostcodes().some((item) => item.postcode === clean);
+  }
+
+  function renderImportantChips() {
+    const container = document.getElementById('important-chips-row');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const list = getImportantPostcodes();
+    if (list.length === 0) {
+      const emptyHint = document.createElement('span');
+      emptyHint.className = 'chips-empty-hint';
+      emptyHint.textContent = 'Save frequent postcodes (Home, Work) for quick 1-tap search';
+      container.appendChild(emptyHint);
+      return;
+    }
+
+    list.forEach((item) => {
+      const chip = document.createElement('div');
+      chip.className = 'postcode-chip';
+      if (state.currentOutcode && (item.postcode === state.currentOutcode || item.postcode.startsWith(state.currentOutcode))) {
+        chip.classList.add('is-active');
+      }
+      chip.setAttribute('role', 'button');
+      chip.setAttribute('tabindex', '0');
+      chip.setAttribute('aria-label', `Search forecourts for ${item.postcode}`);
+
+      const starIcon = document.createElement('span');
+      starIcon.setAttribute('aria-hidden', 'true');
+      starIcon.style.color = 'var(--star-gold)';
+      starIcon.style.fontSize = '0.75rem';
+      starIcon.textContent = '★ ';
+      chip.appendChild(starIcon);
+
+      const label = document.createElement('span');
+      label.className = 'chip-text';
+      label.textContent = item.postcode;
+      chip.appendChild(label);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'chip-remove-btn';
+      removeBtn.type = 'button';
+      removeBtn.innerHTML = '&times;';
+      removeBtn.setAttribute('title', `Remove ${item.postcode}`);
+      removeBtn.setAttribute('aria-label', `Remove ${item.postcode}`);
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeImportantPostcode(item.postcode);
+      });
+      chip.appendChild(removeBtn);
+
+      chip.addEventListener('click', () => {
+        searchInput.value = item.postcode;
+        performSearch(item.postcode);
+      });
+
+      chip.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          searchInput.value = item.postcode;
+          performSearch(item.postcode);
+        }
+      });
+
+      container.appendChild(chip);
+    });
+  }
+
+  function setupImportantPostcodes() {
+    const addBtn = document.getElementById('btn-add-postcode-inline');
+    const form = document.getElementById('add-postcode-form');
+    const input = document.getElementById('add-postcode-input');
+    const saveBtn = document.getElementById('btn-save-postcode-submit');
+    const cancelBtn = document.getElementById('btn-cancel-postcode-inline');
+
+    if (addBtn && form && input) {
+      addBtn.addEventListener('click', () => {
+        form.hidden = !form.hidden;
+        if (!form.hidden) {
+          input.value = '';
+          input.focus();
+        }
+      });
+
+      const handleAddSubmit = () => {
+        const val = input.value.trim();
+        if (!val) return;
+        const added = addImportantPostcode(val);
+        form.hidden = true;
+        if (added) {
+          showStatus(`Saved ${val.toUpperCase()} to Important Postcodes`, 'alert-info');
+          performSearch(val);
+        }
+      };
+
+      if (saveBtn) {
+        saveBtn.addEventListener('click', handleAddSubmit);
+      }
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleAddSubmit();
+        } else if (e.key === 'Escape') {
+          form.hidden = true;
+        }
+      });
+
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+          form.hidden = true;
+        });
+      }
+    }
+
+    renderImportantChips();
+    setupSaveDistrictButton();
+  }
+
+  function setupSaveDistrictButton() {
+    const btn = document.getElementById('btn-save-current-postcode');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const outcode = state.currentOutcode;
+      if (!outcode) return;
+      if (isPostcodeSaved(outcode)) {
+        removeImportantPostcode(outcode);
+        showStatus(`Removed ${outcode} from Important Postcodes`, 'alert-info');
+      } else {
+        addImportantPostcode(outcode);
+        showStatus(`Saved ${outcode} to Important Postcodes`, 'alert-info');
+      }
+      setTimeout(clearStatus, 2500);
+    });
+  }
+
+  function updateSaveDistrictButton() {
+    const btn = document.getElementById('btn-save-current-postcode');
+    const label = document.getElementById('save-postcode-text');
+    if (!btn || !label) return;
+
+    const outcode = state.currentOutcode;
+    if (!outcode) {
+      btn.hidden = true;
+      return;
+    }
+    btn.hidden = false;
+
+    const saved = isPostcodeSaved(outcode);
+    if (saved) {
+      btn.classList.add('is-saved');
+      btn.setAttribute('title', `Remove ${outcode} from Important Postcodes`);
+      btn.setAttribute('aria-label', `Remove ${outcode} from Important Postcodes`);
+      label.textContent = 'Saved';
+      const star = btn.querySelector('.star-icon');
+      if (star) star.setAttribute('fill', 'currentColor');
+    } else {
+      btn.classList.remove('is-saved');
+      btn.setAttribute('title', `Save ${outcode} to Important Postcodes`);
+      btn.setAttribute('aria-label', `Save ${outcode} to Important Postcodes`);
+      label.textContent = `Save ${outcode}`;
+      const star = btn.querySelector('.star-icon');
+      if (star) star.setAttribute('fill', 'none');
+    }
   }
 })();
