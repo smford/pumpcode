@@ -512,93 +512,111 @@
 
     if (isCheapest) {
       card.classList.add('is-cheapest');
-      const badge = document.createElement('div');
-      badge.className = 'cheapest-nearby-badge';
-      badge.textContent = 'Cheapest Nearby';
-      card.appendChild(badge);
     }
 
-    // 1. Header Row: Retailer Brand Badge, Station Name, Distance Indicator
-    const headerRow = document.createElement('div');
-    headerRow.className = 'card-header-row';
+    // 1. Top Section: Identity + Hero Price
+    const cardTop = document.createElement('div');
+    cardTop.className = 'card-top';
 
-    const identityBlock = document.createElement('div');
-    identityBlock.className = 'station-identity-block';
+    const identity = document.createElement('div');
+    identity.className = 'station-identity';
+
+    const badgesRow = document.createElement('div');
+    badgesRow.className = 'station-badges-row';
 
     const brandName = station.brand || 'Forecourt';
     const brandSlug = brandName.toLowerCase().replace(/[^a-z]/g, '');
     const brandBadge = document.createElement('span');
     brandBadge.className = `retailer-brand-badge brand-${brandSlug}`;
     brandBadge.textContent = brandName;
+    badgesRow.appendChild(brandBadge);
 
-    const name = document.createElement('h3');
-    name.className = 'station-title-text';
-    name.textContent = station.name || brandName;
+    if (isCheapest) {
+      const cheapBadge = document.createElement('span');
+      cheapBadge.className = 'cheapest-pill-badge';
+      cheapBadge.textContent = 'Cheapest';
+      badgesRow.appendChild(cheapBadge);
+    }
 
-    const metaStrip = document.createElement('div');
-    metaStrip.className = 'station-meta-strip';
+    identity.appendChild(badgesRow);
 
-    const postcode = document.createElement('span');
-    postcode.className = 'station-postcode-text';
-    postcode.textContent = station.postcode || '';
-    metaStrip.appendChild(postcode);
+    const title = document.createElement('h3');
+    title.className = 'station-name';
+    title.textContent = station.name || brandName;
+    identity.appendChild(title);
+
+    const metaRow = document.createElement('div');
+    metaRow.className = 'station-meta-row';
+
+    if (station.postcode) {
+      const postcode = document.createElement('span');
+      postcode.className = 'station-postcode';
+      postcode.textContent = station.postcode;
+      metaRow.appendChild(postcode);
+    }
 
     if (state.userCoords && station.lat && station.lon) {
       const distMiles = calculateDistanceMiles(state.userCoords.lat, state.userCoords.lon, station.lat, station.lon);
       const distBadge = document.createElement('span');
-      distBadge.className = 'station-distance-badge';
+      distBadge.className = 'station-distance';
       distBadge.textContent = `${distMiles.toFixed(1)} mi away`;
-      metaStrip.appendChild(distBadge);
+      metaRow.appendChild(distBadge);
     }
 
-    identityBlock.appendChild(brandBadge);
-    identityBlock.appendChild(name);
-    identityBlock.appendChild(metaStrip);
-    headerRow.appendChild(identityBlock);
-    card.appendChild(headerRow);
+    identity.appendChild(metaRow);
+    cardTop.appendChild(identity);
 
-    // 2. Massive Hero Price
-    const heroPriceBox = document.createElement('div');
-    heroPriceBox.className = 'hero-price-container';
+    // Hero Price Display
+    const priceDisplay = document.createElement('div');
+    priceDisplay.className = 'price-display';
 
-    const priceNum = document.createElement('span');
-    priceNum.className = 'hero-price-num';
-    priceNum.textContent = currentPrice ? `${currentPrice.toFixed(1)}p` : 'N/A';
+    if (currentPrice) {
+      const priceVal = document.createElement('span');
+      priceVal.className = 'price-value';
+      priceVal.textContent = `${currentPrice.toFixed(1)}p`;
 
-    const priceUnit = document.createElement('span');
-    priceUnit.className = 'hero-price-unit';
-    priceUnit.textContent = `/ L`;
+      const priceUnit = document.createElement('span');
+      priceUnit.className = 'price-unit';
+      priceUnit.textContent = 'per litre';
 
-    heroPriceBox.appendChild(priceNum);
-    heroPriceBox.appendChild(priceUnit);
-    card.appendChild(heroPriceBox);
+      priceDisplay.appendChild(priceVal);
+      priceDisplay.appendChild(priceUnit);
+    } else {
+      const priceNA = document.createElement('span');
+      priceNA.className = 'price-na';
+      priceNA.textContent = 'N/A';
+      priceDisplay.appendChild(priceNA);
+    }
 
-    // 3. Alternative Grades Row
+    cardTop.appendChild(priceDisplay);
+    card.appendChild(cardTop);
+
+    // 2. Alternative Fuel Grades
     if (station.prices) {
-      const altGradesRow = document.createElement('div');
-      altGradesRow.className = 'alt-grades-row';
-
-      const remainingGrades = Object.keys(station.prices).filter((k) => k !== grade);
-      remainingGrades.forEach((k) => {
-        const pill = document.createElement('span');
-        pill.className = 'alt-grade-pill';
-        pill.textContent = `${k}: ${station.prices[k].toFixed(1)}p`;
-        altGradesRow.appendChild(pill);
-      });
-
+      const remainingGrades = Object.keys(station.prices).filter((k) => k !== grade && station.prices[k] > 0);
       if (remainingGrades.length > 0) {
+        const altGradesRow = document.createElement('div');
+        altGradesRow.className = 'alt-grades-row';
+
+        remainingGrades.forEach((k) => {
+          const pill = document.createElement('span');
+          pill.className = 'alt-grade-pill';
+          pill.innerHTML = `<span class="alt-grade-name">${k}</span> <span class="alt-grade-val">${station.prices[k].toFixed(1)}p</span>`;
+          altGradesRow.appendChild(pill);
+        });
+
         card.appendChild(altGradesRow);
       }
     }
 
-    // 4. Amenities Badges Row
+    // 3. Forecourt Amenities Badges
     if (station.amenities && station.amenities.length > 0) {
       const amenitiesRow = document.createElement('div');
-      amenitiesRow.className = 'amenities-badges-row';
+      amenitiesRow.className = 'amenities-row';
 
       station.amenities.forEach((amenity) => {
         const chip = document.createElement('span');
-        chip.className = 'amenity-chip';
+        chip.className = 'amenity-tag';
         chip.textContent = formatAmenityName(amenity);
         amenitiesRow.appendChild(chip);
       });
@@ -606,16 +624,15 @@
       card.appendChild(amenitiesRow);
     }
 
-    // 5. "Get Directions" Full-Width Action
+    // 4. "Get Directions" Full-Width Action
     const footerAction = document.createElement('div');
-    footerAction.className = 'card-footer-action';
+    footerAction.className = 'card-actions';
 
     const directionsLink = document.createElement('a');
-    directionsLink.className = 'btn-get-directions';
+    directionsLink.className = 'btn-directions';
     directionsLink.target = '_blank';
     directionsLink.rel = 'noopener noreferrer';
 
-    // Platform-native navigation URL
     const stationTitle = station.name || station.brand || 'Fuel Station';
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
@@ -627,7 +644,7 @@
 
     directionsLink.innerHTML = `
       <span>Get Directions</span>
-      <svg class="diagonal-arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <svg class="directions-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <line x1="7" y1="17" x2="17" y2="7"></line>
         <polyline points="7 7 17 7 17 17"></polyline>
       </svg>
