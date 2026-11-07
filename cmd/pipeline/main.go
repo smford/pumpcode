@@ -15,9 +15,9 @@ import (
 func main() {
 	var (
 		outputDir        = flag.String("output", getEnv("PUMPCODE_OUTPUT_DIR", "data/outcodes"), "Output directory for sharded JSON files")
-		tokenURL         = flag.String("token-url", getEnv("FUEL_FINDER_TOKEN_URL", "https://api.fuel-finder.service.gov.uk/oauth/token"), "OAuth2 token URL")
-		baseURL          = flag.String("base-url", getEnv("FUEL_FINDER_BASE_URL", "https://api.fuel-finder.service.gov.uk"), "Base URL of Fuel Finder API")
-		stationsEndpoint = flag.String("stations-endpoint", getEnv("FUEL_FINDER_STATIONS_ENDPOINT", "/v1/stations"), "Endpoint path for stations and prices")
+		tokenURL         = flag.String("token-url", getEnv("FUEL_FINDER_TOKEN_URL", "https://www.fuel-finder.service.gov.uk/api/v1/oauth/generate_access_token"), "OAuth2 token URL")
+		baseURL          = flag.String("base-url", getEnv("FUEL_FINDER_BASE_URL", "https://www.fuel-finder.service.gov.uk"), "Base URL of Fuel Finder API")
+		stationsEndpoint = flag.String("stations-endpoint", getEnv("FUEL_FINDER_STATIONS_ENDPOINT", "/api/v1/pfs"), "Endpoint path for stations and prices")
 		scope            = flag.String("scope", getEnv("FUEL_FINDER_SCOPE", "fuelfinder.read"), "OAuth2 scope")
 		mockMode         = flag.Bool("mock", getEnvBool("PUMPCODE_MOCK", false), "Force mock data generation mode")
 		timeoutSec       = flag.Int("timeout", 40, "Timeout in seconds for entire data pipeline")

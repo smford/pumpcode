@@ -41,23 +41,28 @@ type Client struct {
 	expiresAt   time.Time
 }
 
-// OAuthTokenResponse matches standard OAuth2 token response payloads.
+// OAuthTokenResponse matches standard and nested Fuel Finder OAuth2 token response payloads.
 type OAuthTokenResponse struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
 	ExpiresIn   int64  `json:"expires_in"`
+	Data        *struct {
+		AccessToken string `json:"access_token"`
+		TokenType   string `json:"token_type"`
+		ExpiresIn   int64  `json:"expires_in"`
+	} `json:"data,omitempty"`
 }
 
 // NewClient initializes a new Fuel Finder client with sensible defaults.
 func NewClient(cfg Config) *Client {
 	if cfg.TokenURL == "" {
-		cfg.TokenURL = "https://api.fuel-finder.service.gov.uk/oauth/token"
+		cfg.TokenURL = "https://www.fuel-finder.service.gov.uk/api/v1/oauth/generate_access_token"
 	}
 	if cfg.BaseURL == "" {
-		cfg.BaseURL = "https://api.fuel-finder.service.gov.uk"
+		cfg.BaseURL = "https://www.fuel-finder.service.gov.uk"
 	}
 	if cfg.StationsEndpoint == "" {
-		cfg.StationsEndpoint = "/v1/stations"
+		cfg.StationsEndpoint = "/api/v1/pfs"
 	}
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = 30 * time.Second
@@ -124,6 +129,12 @@ func (c *Client) GetToken(ctx context.Context) (string, error) {
 
 	if err != nil {
 		return "", fmt.Errorf("oauth token exchange failed: %w", err)
+	}
+
+	if tokenResp.AccessToken == "" && tokenResp.Data != nil {
+		tokenResp.AccessToken = tokenResp.Data.AccessToken
+		tokenResp.TokenType = tokenResp.Data.TokenType
+		tokenResp.ExpiresIn = tokenResp.Data.ExpiresIn
 	}
 
 	if tokenResp.AccessToken == "" {
