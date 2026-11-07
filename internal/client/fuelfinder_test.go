@@ -19,18 +19,20 @@ func TestOAuthTokenRetrievalAndCache(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
-		if err := r.ParseForm(); err != nil {
-			t.Fatalf("failed to parse form: %v", err)
+
+		var payload struct {
+			ClientID     string `json:"client_id"`
+			ClientSecret string `json:"client_secret"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatalf("failed to decode json body: %v", err)
 		}
 
-		if r.Form.Get("grant_type") != "client_credentials" {
-			t.Errorf("expected grant_type=client_credentials, got %s", r.Form.Get("grant_type"))
+		if payload.ClientID != "test-client-id" {
+			t.Errorf("expected client_id=test-client-id, got %s", payload.ClientID)
 		}
-		if r.Form.Get("client_id") != "test-client-id" {
-			t.Errorf("expected client_id=test-client-id, got %s", r.Form.Get("client_id"))
-		}
-		if r.Form.Get("client_secret") != "test-client-secret" {
-			t.Errorf("expected client_secret=test-client-secret, got %s", r.Form.Get("client_secret"))
+		if payload.ClientSecret != "test-client-secret" {
+			t.Errorf("expected client_secret=test-client-secret, got %s", payload.ClientSecret)
 		}
 
 		w.Header().Set("Content-Type", "application/json")

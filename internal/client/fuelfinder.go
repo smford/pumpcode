@@ -1,15 +1,16 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -106,24 +107,24 @@ func (c *Client) GetToken(ctx context.Context) (string, error) {
 		return "", errors.New("missing FUEL_FINDER_CLIENT_ID or FUEL_FINDER_CLIENT_SECRET")
 	}
 
-	form := url.Values{}
-	form.Set("grant_type", "client_credentials")
-	form.Set("client_id", c.cfg.ClientID)
-	form.Set("client_secret", c.cfg.ClientSecret)
-	if c.cfg.Scope != "" {
-		form.Set("scope", c.cfg.Scope)
-	} else {
-		form.Set("scope", "fuelfinder.read")
+	payload := map[string]string{
+		"client_id":     c.cfg.ClientID,
+		"client_secret": c.cfg.ClientSecret,
+	}
+	jsonBody, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode oauth request payload: %w", err)
 	}
 
 	var tokenResp OAuthTokenResponse
-	err := c.executeWithRetry(ctx, func() (*http.Response, error) {
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.cfg.TokenURL, strings.NewReader(form.Encode()))
+	err = c.executeWithRetry(ctx, func() (*http.Response, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.cfg.TokenURL, bytes.NewReader(jsonBody))
 		if err != nil {
 			return nil, err
 		}
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "application/json")
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 		return c.httpClient.Do(req)
 	}, &tokenResp)
 
@@ -197,6 +198,7 @@ func (c *Client) FetchStations(ctx context.Context) ([]sharding.Station, error) 
 		}
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Accept", "application/json")
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 		return c.httpClient.Do(req)
 	}, &rawBody)
 
@@ -494,8 +496,16 @@ func (c *Client) executeWithRetry(ctx context.Context, reqFunc func() (*http.Res
 
 		// Handle Client Errors (4xx)
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
-			return fmt.Errorf("http request failed with status %d: %s", resp.StatusCode, string(body))
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+			reqURL := ""
+			if resp.Request != nil && resp.Request.URL != nil {
+				reqURL = resp.Request.URL.String()
+			}
+			cfID := resp.Header.Get("X-Amz-Cf-Id")
+			serverHdr := resp.Header.Get("Server")
+			log.Printf("[PumpCode Diagnostics] HTTP %d from %s (Server: %s, CloudFront ID: %s): %s",
+				resp.StatusCode, reqURL, serverHdr, cfID, string(body))
+			return fmt.Errorf("http request to %s failed with status %d: %s", reqURL, resp.StatusCode, string(body))
 		}
 
 		// Successful response decoding
