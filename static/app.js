@@ -611,15 +611,14 @@
     directionsLink.className = 'btn-directions';
 
     const hasCoords = station.lat != null && station.lon != null && !isNaN(station.lat) && !isNaN(station.lon);
-    const rawDest = hasCoords
+    const dest = hasCoords
       ? `${station.lat},${station.lon}`
-      : `${station.name || station.brand || 'Petrol Station'} ${station.postcode || ''}`.trim();
-    const encodedDest = encodeURIComponent(rawDest);
+      : encodeURIComponent(`${station.brand || ''} ${station.name || ''} ${station.postcode || ''}`.trim());
 
     const isApple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    // Open in new tab on desktop only; on mobile, open directly to prevent Chrome/Safari intent handoff from stripping URL parameters
+    // Open in new tab on desktop only; on mobile, open directly so native map app intercepts without dropping parameters
     if (!isMobile) {
       directionsLink.target = '_blank';
       directionsLink.rel = 'noopener noreferrer';
@@ -627,10 +626,10 @@
 
     if (isApple) {
       // Apple Maps driving directions
-      directionsLink.href = `https://maps.apple.com/?daddr=${encodedDest}&dirflg=d`;
+      directionsLink.href = `https://maps.apple.com/?daddr=${dest}&dirflg=d`;
     } else {
-      // Google Maps driving directions (fully encoded destination + explicit driving travelmode)
-      directionsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${encodedDest}&travelmode=driving`;
+      // Google Maps driving directions via native intent host (maps.google.com with daddr and dirflg)
+      directionsLink.href = `https://maps.google.com/maps?daddr=${dest}&dirflg=d`;
     }
 
     directionsLink.innerHTML = `
