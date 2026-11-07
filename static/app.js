@@ -57,7 +57,7 @@
     // Register Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=11')
+        navigator.serviceWorker.register('./sw.js?v=12')
           .then((registration) => {
             registration.update();
             console.log('PumpCode PWA Service Worker registered:', registration.scope);
