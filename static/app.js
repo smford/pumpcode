@@ -57,8 +57,9 @@
     // Register Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=9')
+        navigator.serviceWorker.register('./sw.js?v=11')
           .then((registration) => {
+            registration.update();
             console.log('PumpCode PWA Service Worker registered:', registration.scope);
           })
           .catch((error) => {
@@ -656,10 +657,18 @@
     const directionsLink = document.createElement('a');
     directionsLink.className = 'btn-directions';
 
-    const hasCoords = station.lat != null && station.lon != null && !isNaN(station.lat) && !isNaN(station.lon);
-    const dest = hasCoords
-      ? `${station.lat},${station.lon}`
-      : encodeURIComponent(`${station.brand || ''} ${station.name || ''} ${station.postcode || ''}`.trim());
+    // Build accurate destination query combining brand, station name, and UK postcode
+    // UK postcodes uniquely identify forecourt locations without decimal locale/parsing conflicts
+    const destParts = [];
+    if (station.brand) destParts.push(station.brand);
+    if (station.name && station.name !== station.brand) destParts.push(station.name);
+    if (station.postcode) destParts.push(station.postcode);
+
+    let destinationQuery = destParts.join(' ').trim();
+    if (!destinationQuery && station.lat != null && station.lon != null) {
+      destinationQuery = `${station.lat},${station.lon}`;
+    }
+    const encodedDestination = encodeURIComponent(destinationQuery);
 
     const isApple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const isAndroid = /Android/i.test(navigator.userAgent);
@@ -673,10 +682,10 @@
 
     if (isApple) {
       // Apple Maps driving directions
-      directionsLink.href = `https://maps.apple.com/?daddr=${dest}&dirflg=d`;
+      directionsLink.href = `https://maps.apple.com/?daddr=${encodedDestination}&dirflg=d`;
     } else {
       // Google Maps driving directions (Android App Link & Desktop)
-      directionsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`;
+      directionsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${encodedDestination}&travelmode=driving`;
     }
 
     directionsLink.innerHTML = `
