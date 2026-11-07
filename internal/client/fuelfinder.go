@@ -218,11 +218,6 @@ func FetchOpenDataFeeds(ctx context.Context, httpClient *http.Client) []sharding
 
 	stationMap := make(map[string]sharding.Station)
 
-	// Pre-populate with benchmark stations
-	for _, st := range GenerateMockStations() {
-		stationMap[st.ID] = st
-	}
-
 	for _, feed := range PublicOpenDataEndpoints {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, feed.URL, nil)
 		if err != nil {

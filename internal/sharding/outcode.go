@@ -119,6 +119,13 @@ func ShardAndWrite(stations []Station, opts ShardOptions) (*IndexPayload, error)
 		return nil, fmt.Errorf("failed to create output directory %s: %w", opts.OutputDir, err)
 	}
 
+	// Clean existing JSON files in OutputDir to prevent stale outcode shards
+	if files, err := filepath.Glob(filepath.Join(opts.OutputDir, "*.json")); err == nil {
+		for _, f := range files {
+			_ = os.Remove(f)
+		}
+	}
+
 	grouped := GroupStationsByOutcode(stations)
 	updatedAtStr := opts.Timestamp.Format(time.RFC3339)
 

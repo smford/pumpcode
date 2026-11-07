@@ -37,12 +37,11 @@ func main() {
 	var stations []sharding.Station
 	var err error
 
-	if *mockMode || (clientID == "" && clientSecret == "") {
-		if clientID == "" && clientSecret == "" && !*mockMode {
-			log.Println("[PumpCode Pipeline] Note: FUEL_FINDER_CLIENT_ID and FUEL_FINDER_CLIENT_SECRET not set. Ingesting open data feeds and benchmarks.")
-		} else {
-			log.Println("[PumpCode Pipeline] Running in mock generation mode.")
-		}
+	if *mockMode {
+		log.Println("[PumpCode Pipeline] Running in mock generation mode.")
+		stations = client.GenerateMockStations()
+	} else if clientID == "" && clientSecret == "" {
+		log.Println("[PumpCode Pipeline] Note: FUEL_FINDER_CLIENT_ID and FUEL_FINDER_CLIENT_SECRET not set. Ingesting live open data feeds.")
 		stations = client.FetchOpenDataFeeds(ctx, nil)
 	} else {
 		log.Printf("[PumpCode Pipeline] Connecting to Fuel Finder API (%s)...", *baseURL)
