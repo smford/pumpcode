@@ -36,6 +36,7 @@
   init();
 
   async function init() {
+    setupPWA();
     setupThemeToggle();
     setupGradeSelector();
     setupSearch();
@@ -46,6 +47,51 @@
 
     // Attempt geolocation on initial page load
     requestGeolocation();
+  }
+
+  // --- Progressive Web App (PWA) Setup ---
+  function setupPWA() {
+    const installBtn = document.getElementById('btn-pwa-install');
+    let deferredPrompt = null;
+
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((registration) => {
+            console.log('PumpCode PWA Service Worker registered:', registration.scope);
+          })
+          .catch((error) => {
+            console.warn('PumpCode Service Worker registration failed:', error);
+          });
+      });
+    }
+
+    // Capture install prompt for Chrome/Android
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (installBtn) {
+        installBtn.hidden = false;
+      }
+    });
+
+    if (installBtn) {
+      installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        installBtn.hidden = true;
+        deferredPrompt.prompt();
+        const choiceResult = await deferredPrompt.userChoice;
+        console.log('PWA prompt user choice:', choiceResult.outcome);
+        deferredPrompt = null;
+      });
+    }
+
+    window.addEventListener('appinstalled', () => {
+      if (installBtn) installBtn.hidden = true;
+      deferredPrompt = null;
+      console.log('PumpCode PWA installed successfully.');
+    });
   }
 
   // --- Theme Management ---
@@ -628,12 +674,8 @@
     if (isApple) {
       // Apple Maps driving directions
       directionsLink.href = `https://maps.apple.com/?daddr=${dest}&dirflg=d`;
-    } else if (isAndroid) {
-      // Android: launch native turn-by-turn driving navigation in Google Maps
-      const fallbackUrl = encodeURIComponent(`https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`);
-      directionsLink.href = `intent://q=${dest}&mode=d#Intent;scheme=google.navigation;package=com.google.android.apps.maps;action=android.intent.action.VIEW;S.browser_fallback_url=${fallbackUrl};end;`;
     } else {
-      // Desktop / Other: standard Google Maps driving directions
+      // Google Maps driving directions (Android App Link & Desktop)
       directionsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`;
     }
 

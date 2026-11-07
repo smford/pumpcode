@@ -280,6 +280,38 @@ html.dark .logo-icon-box {
   }
 }
 
+/* PWA Install Button */
+.btn-install-pwa {
+  height: 2.35rem;
+  padding: 0 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--brand-blue-bg);
+  color: var(--brand-blue);
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: transform var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.btn-install-pwa:hover {
+  background-color: var(--brand-blue);
+  color: #ffffff;
+}
+
+.btn-install-pwa:active {
+  transform: scale(0.94);
+}
+
+.install-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+}
+
 /* Theme Toggle Button */
 .btn-theme-toggle {
   width: 2.35rem;
