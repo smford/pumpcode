@@ -1,6 +1,6 @@
 /**
- * PumpCode - Client-side Fuel Price Tracker
- * Pure Vanilla JavaScript (Zero build step, zero dependencies)
+ * PumpCode - Tactical Car-Safe Client-Side Fuel Price Tracker
+ * Pure Vanilla ES6+ JavaScript (Zero dependencies, zero build step)
  */
 
 (function () {
@@ -22,7 +22,7 @@
   const searchBtn = document.getElementById('search-btn');
   const autocompleteList = document.getElementById('autocomplete-list');
   const locateBtn = document.getElementById('locate-btn');
-  const freshnessBadge = document.getElementById('freshness-badge');
+  const freshnessLabel = document.getElementById('freshness-label');
   const themeToggle = document.getElementById('theme-toggle');
   const statusContainer = document.getElementById('status-container');
   const resultsHeader = document.getElementById('results-header');
@@ -33,7 +33,7 @@
   const quickOutcodesContainer = document.getElementById('quick-outcodes');
   const gradeRadios = document.querySelectorAll('input[name="fuel-grade"]');
 
-  // Initialize Application
+  // Initialize
   init();
 
   async function init() {
@@ -42,7 +42,7 @@
     setupSearch();
     setupGeolocation();
 
-    // Fetch master index file
+    // Load master index
     await loadIndex();
 
     // Attempt geolocation on initial page load
@@ -51,36 +51,26 @@
 
   // --- Theme Management ---
   function setupThemeToggle() {
-    const metaColorScheme = document.querySelector('meta[name="color-scheme"]');
-
     themeToggle.addEventListener('click', () => {
-      const currentResolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      const activeMeta = metaColorScheme.getAttribute('content');
-      const isCurrentlyDark = activeMeta === 'dark' || (activeMeta === 'light dark' && currentResolved === 'dark');
-
-      const nextTheme = isCurrentlyDark ? 'light' : 'dark';
-
-      // If user toggles to match their OS preference, clear explicit override
-      if (nextTheme === currentResolved) {
-        metaColorScheme.setAttribute('content', 'light dark');
-        try {
-          localStorage.removeItem('pumpcode-theme');
-        } catch (_) {}
-      } else {
-        metaColorScheme.setAttribute('content', nextTheme);
-        try {
-          localStorage.setItem('pumpcode-theme', nextTheme);
-        } catch (_) {}
-      }
+      const isDark = document.documentElement.classList.toggle('dark');
+      try {
+        localStorage.setItem('pumpcode-theme', isDark ? 'dark' : 'light');
+      } catch (_) {}
     });
 
-    // Listen to OS theme changes
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      // Re-evaluate if needed
+    // Listen to OS scheme changes if user hasn't explicitly set a preference
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!localStorage.getItem('pumpcode-theme')) {
+        if (e.matches) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
     });
   }
 
-  // --- Grade Selector ---
+  // --- Grade Selector (In-Memory Re-sorting) ---
   function setupGradeSelector() {
     gradeRadios.forEach((radio) => {
       radio.addEventListener('change', (e) => {
@@ -104,7 +94,7 @@
       renderQuickOutcodes(state.outcodesIndex.outcodes);
     } catch (err) {
       console.warn('Index load error:', err);
-      freshnessBadge.textContent = 'Data offline';
+      if (freshnessLabel) freshnessLabel.textContent = 'Data offline';
     }
   }
 
@@ -112,12 +102,12 @@
     if (!outcodes || !outcodes.length) return;
     quickOutcodesContainer.innerHTML = '';
 
-    // Show up to 8 top outcodes as quick buttons
+    // Show up to 8 top outcodes as quick pills
     const sample = outcodes.slice(0, 8);
     sample.forEach((item) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'quick-btn';
+      btn.className = 'quick-pill';
       btn.textContent = item.outcode;
       btn.title = `${item.station_count} stations in ${item.outcode}`;
       btn.addEventListener('click', () => {
@@ -143,7 +133,7 @@
       return;
     }
 
-    showStatus('Locating nearby forecourts...', 'alert-info');
+    showStatus('Locking onto GPS coordinates...', 'alert-info');
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -155,7 +145,7 @@
         console.warn('Geolocation error:', err.message);
         clearStatus();
         if (manualTrigger) {
-          showStatus('Location permission denied. Please enter your outcode or postcode manually.', 'alert-warning');
+          showStatus('Location permission denied. Please enter an outcode or postcode.', 'alert-warning');
         }
         fallbackToFirstOutcode();
       },
@@ -173,12 +163,11 @@
         const detectedOutcode = data.result[0].outcode.toUpperCase();
         const exists = state.outcodesIndex && state.outcodesIndex.outcodes && state.outcodesIndex.outcodes.some((item) => item.outcode === detectedOutcode);
         if (exists) {
-          showStatus(`Located near ${detectedOutcode}. Loading fuel prices...`, 'alert-info');
+          showStatus(`Located near ${detectedOutcode}. Loading live prices...`, 'alert-info');
           await loadOutcode(detectedOutcode);
           return;
         }
       }
-      // If direct outcode has no station or lookup was inconclusive, find nearest with stations
       await findAndLoadNearestOutcode(lat, lon, 'your location');
     } catch (err) {
       console.warn('Coordinate resolution failed:', err);
@@ -189,7 +178,6 @@
   function fallbackToFirstOutcode() {
     if (state.currentOutcode) return;
     if (state.outcodesIndex && state.outcodesIndex.outcodes.length > 0) {
-      // Pick first available outcode as initial view
       loadOutcode(state.outcodesIndex.outcodes[0].outcode);
     }
   }
@@ -223,7 +211,7 @@
 
       debounceTimer = setTimeout(() => {
         handleAutocomplete(query);
-      }, 160);
+      }, 150);
     });
 
     searchInput.addEventListener('keydown', (e) => {
@@ -236,7 +224,6 @@
       }
     });
 
-    // Close autocomplete on click outside
     document.addEventListener('click', (e) => {
       if (!searchInput.contains(e.target) && !autocompleteList.contains(e.target)) {
         closeAutocomplete();
@@ -259,7 +246,7 @@
       return;
     }
 
-    // Attempt lookup via postcodes.io for full postcode or missing outcode
+    // Lookup via postcodes.io for full postcode or nearest outcode
     showStatus(`Looking up postcode "${raw}"...`, 'alert-info');
     const resolved = await resolvePostcodeOrNearest(raw, candidateOutcode);
     if (!resolved) {
@@ -298,7 +285,7 @@
 
       return false;
     } catch (err) {
-      console.warn('Postcode resolution error:', err);
+      console.warn('Postcode lookup error:', err);
       return false;
     }
   }
@@ -421,7 +408,7 @@
       const res = await fetch(`data/outcodes/${cleanOutcode}.json`);
       if (!res.ok) {
         if (res.status === 404) {
-          showStatus(`No filling station data recorded yet for district "${cleanOutcode}".`, 'alert-warning');
+          showStatus(`No forecourt records found for district "${cleanOutcode}".`, 'alert-warning');
           stationsGrid.innerHTML = '';
           resultsHeader.hidden = true;
           return;
@@ -444,12 +431,12 @@
     }
   }
 
-  // --- Rendering Stations ---
+  // --- Rendering Stations (Tactical Car-Safe Layout) ---
   function renderStations() {
     const grade = state.selectedGrade;
     const outcode = state.currentOutcode;
 
-    // Filter stations that have a price for this grade, or sort them with priced ones first
+    // In-memory sort: cheapest first for the active grade
     const stationsWithPrices = [...state.stations].sort((a, b) => {
       const priceA = a.prices && a.prices[grade] ? a.prices[grade] : 999999;
       const priceB = b.prices && b.prices[grade] ? b.prices[grade] : 999999;
@@ -460,7 +447,7 @@
     resultsTitle.textContent = `Forecourts in ${outcode}`;
     resultsCount.textContent = `${stationsWithPrices.length} forecourt${stationsWithPrices.length === 1 ? '' : 's'}`;
 
-    // Calculate Price Statistics for Summary Bar
+    // Compute District Statistics Strip (Lowest, Average, Spread)
     if (resultsSummary) {
       resultsSummary.innerHTML = '';
       const pricedOnly = stationsWithPrices.filter((s) => s.prices && s.prices[grade] && s.prices[grade] > 0);
@@ -472,19 +459,19 @@
         const avg = sum / pricedOnly.length;
         const spread = highest - lowest;
 
-        const lowPill = document.createElement('span');
-        lowPill.className = 'summary-pill summary-pill-highlight';
-        lowPill.textContent = `Lowest: ${lowest.toFixed(1)}p`;
-        resultsSummary.appendChild(lowPill);
+        const lowestPill = document.createElement('span');
+        lowestPill.className = 'stat-pill stat-pill-cheapest';
+        lowestPill.textContent = `Lowest: ${lowest.toFixed(1)}p`;
+        resultsSummary.appendChild(lowestPill);
 
         const avgPill = document.createElement('span');
-        avgPill.className = 'summary-pill';
+        avgPill.className = 'stat-pill';
         avgPill.textContent = `Average: ${avg.toFixed(1)}p`;
         resultsSummary.appendChild(avgPill);
 
         if (pricedOnly.length > 1 && spread > 0) {
           const spreadPill = document.createElement('span');
-          spreadPill.className = 'summary-pill';
+          spreadPill.className = 'stat-pill';
           spreadPill.textContent = `Spread: ${spread.toFixed(1)}p`;
           resultsSummary.appendChild(spreadPill);
         }
@@ -495,14 +482,14 @@
 
     if (stationsWithPrices.length === 0) {
       stationsGrid.innerHTML = `
-        <div class="alert alert-warning" style="grid-column: 1 / -1;">
-          No forecourts found in ${outcode}.
+        <div class="alert-box alert-warning" style="grid-column: 1 / -1;">
+          <span>No forecourts currently recorded in ${outcode}.</span>
         </div>
       `;
       return;
     }
 
-    // Determine the lowest price for the currently selected fuel grade
+    // Lowest price in active district
     let lowestPrice = Infinity;
     stationsWithPrices.forEach((s) => {
       if (s.prices && s.prices[grade] && s.prices[grade] < lowestPrice) {
@@ -518,7 +505,7 @@
 
   function createStationCard(station, grade, lowestPrice) {
     const card = document.createElement('article');
-    card.className = 'station-card';
+    card.className = 'forecourt-card';
 
     const currentPrice = station.prices && station.prices[grade];
     const isCheapest = currentPrice && currentPrice === lowestPrice;
@@ -526,121 +513,128 @@
     if (isCheapest) {
       card.classList.add('is-cheapest');
       const badge = document.createElement('div');
-      badge.className = 'cheapest-badge';
+      badge.className = 'cheapest-nearby-badge';
       badge.textContent = 'Cheapest Nearby';
       card.appendChild(badge);
     }
 
-    // Top section: Identity & Price
-    const cardTop = document.createElement('div');
-    cardTop.className = 'card-top';
+    // 1. Header Row: Retailer Brand Badge, Station Name, Distance Indicator
+    const headerRow = document.createElement('div');
+    headerRow.className = 'card-header-row';
 
-    const identity = document.createElement('div');
-    identity.className = 'station-identity';
+    const identityBlock = document.createElement('div');
+    identityBlock.className = 'station-identity-block';
 
     const brandName = station.brand || 'Forecourt';
-    const brandBadge = document.createElement('span');
     const brandSlug = brandName.toLowerCase().replace(/[^a-z]/g, '');
-    brandBadge.className = `brand-badge brand-${brandSlug}`;
+    const brandBadge = document.createElement('span');
+    brandBadge.className = `retailer-brand-badge brand-${brandSlug}`;
     brandBadge.textContent = brandName;
 
     const name = document.createElement('h3');
-    name.className = 'station-name';
+    name.className = 'station-title-text';
     name.textContent = station.name || brandName;
 
-    const metaRow = document.createElement('div');
-    metaRow.className = 'station-meta-row';
+    const metaStrip = document.createElement('div');
+    metaStrip.className = 'station-meta-strip';
 
     const postcode = document.createElement('span');
-    postcode.className = 'station-postcode';
+    postcode.className = 'station-postcode-text';
     postcode.textContent = station.postcode || '';
-    metaRow.appendChild(postcode);
+    metaStrip.appendChild(postcode);
 
-    // Compute approximate distance if user coordinates are known
     if (state.userCoords && station.lat && station.lon) {
       const distMiles = calculateDistanceMiles(state.userCoords.lat, state.userCoords.lon, station.lat, station.lon);
       const distBadge = document.createElement('span');
-      distBadge.className = 'station-distance';
+      distBadge.className = 'station-distance-badge';
       distBadge.textContent = `${distMiles.toFixed(1)} mi away`;
-      metaRow.appendChild(distBadge);
+      metaStrip.appendChild(distBadge);
     }
 
-    identity.appendChild(brandBadge);
-    identity.appendChild(name);
-    identity.appendChild(metaRow);
+    identityBlock.appendChild(brandBadge);
+    identityBlock.appendChild(name);
+    identityBlock.appendChild(metaStrip);
+    headerRow.appendChild(identityBlock);
+    card.appendChild(headerRow);
 
-    const priceBox = document.createElement('div');
-    priceBox.className = 'primary-price-box';
+    // 2. Massive Hero Price
+    const heroPriceBox = document.createElement('div');
+    heroPriceBox.className = 'hero-price-container';
 
-    const priceValue = document.createElement('div');
-    priceValue.className = 'price-main';
-    priceValue.textContent = currentPrice ? `${currentPrice.toFixed(1)}p` : 'N/A';
+    const priceNum = document.createElement('span');
+    priceNum.className = 'hero-price-num';
+    priceNum.textContent = currentPrice ? `${currentPrice.toFixed(1)}p` : 'N/A';
 
-    const priceUnit = document.createElement('div');
-    priceUnit.className = 'price-unit';
-    priceUnit.textContent = `${grade} / L`;
+    const priceUnit = document.createElement('span');
+    priceUnit.className = 'hero-price-unit';
+    priceUnit.textContent = `/ L`;
 
-    priceBox.appendChild(priceValue);
-    priceBox.appendChild(priceUnit);
+    heroPriceBox.appendChild(priceNum);
+    heroPriceBox.appendChild(priceUnit);
+    card.appendChild(heroPriceBox);
 
-    cardTop.appendChild(identity);
-    cardTop.appendChild(priceBox);
-    card.appendChild(cardTop);
-
-    // Other Fuel Grades
+    // 3. Alternative Grades Row
     if (station.prices) {
-      const otherPrices = document.createElement('div');
-      otherPrices.className = 'other-prices';
+      const altGradesRow = document.createElement('div');
+      altGradesRow.className = 'alt-grades-row';
 
-      const gradesList = Object.keys(station.prices).filter((k) => k !== grade);
-      gradesList.forEach((k) => {
+      const remainingGrades = Object.keys(station.prices).filter((k) => k !== grade);
+      remainingGrades.forEach((k) => {
         const pill = document.createElement('span');
-        pill.className = 'other-price-pill';
+        pill.className = 'alt-grade-pill';
         pill.textContent = `${k}: ${station.prices[k].toFixed(1)}p`;
-        otherPrices.appendChild(pill);
+        altGradesRow.appendChild(pill);
       });
 
-      if (gradesList.length > 0) {
-        card.appendChild(otherPrices);
+      if (remainingGrades.length > 0) {
+        card.appendChild(altGradesRow);
       }
     }
 
-    // Amenities
+    // 4. Amenities Badges Row
     if (station.amenities && station.amenities.length > 0) {
-      const amenitiesContainer = document.createElement('div');
-      amenitiesContainer.className = 'amenities-list';
+      const amenitiesRow = document.createElement('div');
+      amenitiesRow.className = 'amenities-badges-row';
 
       station.amenities.forEach((amenity) => {
-        const tag = document.createElement('span');
-        tag.className = 'amenity-tag';
-        tag.textContent = formatAmenityName(amenity);
-        amenitiesContainer.appendChild(tag);
+        const chip = document.createElement('span');
+        chip.className = 'amenity-chip';
+        chip.textContent = formatAmenityName(amenity);
+        amenitiesRow.appendChild(chip);
       });
 
-      card.appendChild(amenitiesContainer);
+      card.appendChild(amenitiesRow);
     }
 
-    // Navigation Action
-    const actions = document.createElement('div');
-    actions.className = 'card-actions';
+    // 5. "Get Directions" Full-Width Action
+    const footerAction = document.createElement('div');
+    footerAction.className = 'card-footer-action';
 
     const directionsLink = document.createElement('a');
-    directionsLink.className = 'btn btn-primary btn-directions';
+    directionsLink.className = 'btn-get-directions';
     directionsLink.target = '_blank';
     directionsLink.rel = 'noopener noreferrer';
 
-    // Direct link to open navigation in Google Maps / Apple Maps
-    directionsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(station.lat)},${encodeURIComponent(station.lon)}`;
+    // Platform-native navigation URL
+    const stationTitle = station.name || station.brand || 'Fuel Station';
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    if (isIOS) {
+      directionsLink.href = `maps://maps.apple.com/?daddr=${encodeURIComponent(station.lat)},${encodeURIComponent(station.lon)}&q=${encodeURIComponent(stationTitle)}`;
+    } else {
+      directionsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(station.lat)},${encodeURIComponent(station.lon)}`;
+    }
+
     directionsLink.innerHTML = `
       <span>Get Directions</span>
-      <svg class="directions-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <line x1="5" y1="12" x2="19" y2="12"></line>
-        <polyline points="12 5 19 12 12 19"></polyline>
+      <svg class="diagonal-arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="7" y1="17" x2="17" y2="7"></line>
+        <polyline points="7 7 17 7 17 17"></polyline>
       </svg>
     `;
 
-    actions.appendChild(directionsLink);
-    card.appendChild(actions);
+    footerAction.appendChild(directionsLink);
+    card.appendChild(footerAction);
 
     return card;
   }
@@ -649,7 +643,7 @@
     const map = {
       car_wash: 'Car Wash',
       air_water: 'Air & Water',
-      shop: 'Convenience Store',
+      shop: 'Store',
       pay_at_pump: 'Pay at Pump',
       atm: 'ATM',
       costa_coffee: 'Coffee',
@@ -659,14 +653,13 @@
     return map[raw] || raw.replace(/_/g, ' ');
   }
 
-  // --- Freshness & Time Helpers ---
+  // --- Freshness Badge ---
   function updateFreshnessBadge(isoString) {
-    if (!isoString) return;
+    if (!isoString || !freshnessLabel) return;
     const date = new Date(isoString);
     const relative = getRelativeTime(date);
-    freshnessBadge.textContent = `Updated ${relative}`;
-    freshnessBadge.classList.add('badge-fresh');
-    freshnessBadge.title = `Last synced at: ${date.toLocaleString()}`;
+    freshnessLabel.textContent = `Updated ${relative}`;
+    freshnessLabel.parentElement.title = `Last synced at: ${date.toLocaleString()}`;
   }
 
   function getRelativeTime(date) {
@@ -682,10 +675,10 @@
     return `${diffDays}d ago`;
   }
 
-  // --- UI Helpers ---
+  // --- Status Banner Helpers ---
   function showStatus(message, className = 'alert-info') {
     statusContainer.innerHTML = `
-      <div class="alert ${className}">
+      <div class="alert-box ${className}">
         <span>${escapeHTML(message)}</span>
       </div>
     `;

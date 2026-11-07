@@ -3,41 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="description" content="PumpCode - Automated, zero-cost, real-time UK fuel price tracker for filling stations and forecourts.">
-  <meta name="color-scheme" content="light dark">
-  <script>
-    // Prevent FOUC by reading theme override immediately before render
-    try {
-      const storedScheme = localStorage.getItem("pumpcode-theme");
-      if (storedScheme === "light" || storedScheme === "dark") {
-        document.querySelector('meta[name="color-scheme"]').content = storedScheme;
-      }
-    } catch (_) {}
-  </script>
+  <meta name="description" content="PumpCode - Tactical Car-Safe UK Fuel Price Tracker. Real-time forecourt prices for Unleaded E10, Diesel B7, and Super E5.">
   <title>PumpCode | UK Fuel Price Tracker</title>
+  <script>
+    (function () {
+      const saved = localStorage.getItem('pumpcode-theme');
+      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'dark' || (!saved && systemDark)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- Sticky Translucent Header -->
   <header class="site-header">
     <div class="header-inner container">
       <div class="brand-group">
-        <div class="logo-icon-wrapper" aria-hidden="true">
-          <svg class="logo-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="logo-icon-box" aria-hidden="true">
+          <svg class="logo-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18"/>
             <path d="M15 10h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L20.5 6.5"/>
             <rect x="6" y="5" width="6" height="5" rx="1"/>
             <path d="M6 15h6"/>
           </svg>
         </div>
-        <div>
+        <div class="brand-text-block">
           <h1 class="logo-text">Pump<span class="logo-accent">Code</span></h1>
-          <span class="tagline">UK Fuel Price Tracker</span>
+          <span class="tagline">UK Fuel Tracker</span>
         </div>
       </div>
 
       <div class="header-actions">
-        <span id="freshness-badge" class="badge freshness-badge" aria-live="polite">Checking data...</span>
-        <button id="theme-toggle" class="btn btn-icon theme-toggle-btn" type="button" aria-label="Toggle light and dark color scheme" title="Toggle theme">
+        <div id="freshness-badge" class="freshness-pill" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="freshness-label">Checking...</span>
+        </div>
+        <button id="theme-toggle" class="btn-theme-toggle" type="button" aria-label="Toggle dark and light display modes" title="Toggle theme">
           <svg class="theme-icon light-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="4"/>
             <path d="M12 2v2"/>
@@ -57,89 +62,98 @@
     </div>
   </header>
 
-  <main class="container">
-    <section class="controls-panel" aria-label="Search and filter forecourts">
-      <form id="search-form" class="search-form" role="search" onsubmit="return false;">
-        <div class="search-input-wrapper">
-          <svg class="search-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <!-- Main Viewport -->
+  <main class="container main-content">
+    <!-- In-Car Controls Container -->
+    <section class="car-controls-card" aria-label="Forecourt Search and Vehicle Controls">
+      <form id="search-form" class="search-form-grid" role="search" onsubmit="return false;">
+        <div class="search-field-container">
+          <svg class="search-loupe-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.3-4.3"/>
+            <path d="m21 21-4.35-4.35"/>
           </svg>
-          <label for="outcode-search" class="visually-hidden">Search by UK Outcode or Postcode</label>
+          <label for="outcode-search" class="visually-hidden">Search by UK Outcode or Full Postcode</label>
           <input
             type="search"
             id="outcode-search"
-            class="input-search"
-            placeholder="Search outcode or full postcode (e.g. CV3 4AR, SW1A)..."
+            class="input-car-search"
+            placeholder="ENTER OUTCODE OR POSTCODE (E.G. CV3 4AR)..."
             autocomplete="off"
             spellcheck="false"
           >
-          <div id="autocomplete-list" class="autocomplete-list" role="listbox" hidden></div>
+          <div id="autocomplete-list" class="autocomplete-popover" role="listbox" hidden></div>
         </div>
 
-        <div class="search-buttons">
-          <button id="search-btn" class="btn btn-primary btn-search-submit" type="submit">
-            Search
-          </button>
-          <button id="locate-btn" class="btn btn-secondary btn-locate" type="button" title="Detect current district using GPS">
-            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="10"/>
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M12 2v3"/>
-              <path d="M12 19v3"/>
-              <path d="M2 12h3"/>
-              <path d="M19 12h3"/>
-            </svg>
-            <span>Near Me</span>
-          </button>
-        </div>
+        <button id="search-btn" class="btn-action btn-search" type="submit">
+          Search
+        </button>
+
+        <button id="locate-btn" class="btn-action btn-near-me" type="button" title="Detect nearby forecourts with GPS">
+          <svg class="gps-crosshairs-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="3"/>
+            <line x1="12" y1="2" x2="12" y2="5"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+            <line x1="2" y1="12" x2="5" y2="12"/>
+            <line x1="19" y1="12" x2="22" y2="12"/>
+          </svg>
+          <span>Near Me</span>
+        </button>
       </form>
 
-      <div class="filter-row">
-        <fieldset class="grade-toggle-group">
-          <legend class="visually-hidden">Select Fuel Grade</legend>
+      <!-- Fuel Grade Segmented Control -->
+      <div class="controls-sub-row">
+        <fieldset class="grade-segmented-control" aria-label="Select Fuel Grade">
+          <legend class="visually-hidden">Fuel Grade</legend>
           <input type="radio" id="grade-e10" name="fuel-grade" value="E10" checked>
-          <label for="grade-e10" class="toggle-label">Unleaded (E10)</label>
+          <label for="grade-e10" class="segment-label">Unleaded (E10)</label>
 
           <input type="radio" id="grade-b7" name="fuel-grade" value="B7">
-          <label for="grade-b7" class="toggle-label">Diesel (B7)</label>
+          <label for="grade-b7" class="segment-label">Diesel (B7)</label>
 
           <input type="radio" id="grade-e5" name="fuel-grade" value="E5">
-          <label for="grade-e5" class="toggle-label">Super (E5)</label>
+          <label for="grade-e5" class="segment-label">Super (E5)</label>
         </fieldset>
 
-        <div class="quick-outcodes-wrapper">
-          <span class="quick-label">Popular:</span>
-          <div class="quick-outcodes" id="quick-outcodes" aria-label="Popular districts">
+        <!-- Quick Outcodes Horizontal Strip -->
+        <div class="quick-outcodes-scroll" id="quick-outcodes-container" aria-label="Quick Select Districts">
+          <span class="quick-title">Quick:</span>
+          <div class="quick-outcodes-list" id="quick-outcodes">
             <!-- Populated from index.json -->
           </div>
         </div>
       </div>
     </section>
 
-    <section id="status-container" class="status-container" aria-live="polite"></section>
+    <!-- Status & Alerts Container -->
+    <section id="status-container" class="status-region" aria-live="polite"></section>
 
-    <section id="results-section" class="results-section" aria-label="Fuel stations">
-      <div class="results-header" id="results-header" hidden>
-        <div class="results-title-group">
-          <h2 id="results-title">Forecourts</h2>
-          <span id="results-count" class="badge">0 forecourts</span>
+    <!-- Results Section -->
+    <section id="results-section" class="results-region" aria-label="Nearby Forecourts">
+      <!-- District Statistics Strip -->
+      <div class="district-stats-bar" id="results-header" hidden>
+        <div class="district-heading-group">
+          <h2 id="results-title" class="district-title">Forecourts</h2>
+          <span id="results-count" class="count-pill">0 forecourts</span>
         </div>
-        <div id="results-summary" class="results-summary">
-          <!-- Summary pills (lowest, average) populated by app.js -->
+
+        <div id="results-summary" class="metric-cluster">
+          <!-- Populated by JS: Lowest, Average, Spread -->
         </div>
       </div>
 
-      <div id="stations-grid" class="stations-grid">
-        <!-- Rendered station cards -->
+      <!-- Forecourt Cards Grid -->
+      <div id="stations-grid" class="forecourts-grid">
+        <!-- Rendered Forecourt Cards -->
       </div>
     </section>
   </main>
 
+  <!-- Clean Footer -->
   <footer class="site-footer">
-    <div class="container footer-inner">
-      <p>Data sourced from UK Fuel Finder &amp; CMA Open Data Schemes.</p>
-      <p>PumpCode &bull; Zero build step, static edge hosting on GitHub Pages.</p>
+    <div class="container footer-content">
+      <p>Official UK Fuel Finder &amp; CMA Open Data feeds &bull; Tactical Car-Safe Edition</p>
+      <p>PumpCode &bull; Zero build step, static edge hosting on GitHub Pages</p>
     </div>
   </footer>
 
