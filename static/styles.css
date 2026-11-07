@@ -499,21 +499,12 @@ html.dark .search-bar-wrapper:focus-within {
 }
 
 /* ==========================================================================
-   Filters Bar (Segmented Grade Control & Quick Districts)
+   Filters Bar (Segmented Grade Control)
    ========================================================================== */
 
 .filters-bar {
   display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-@media (min-width: 768px) {
-  .filters-bar {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
+  align-items: center;
 }
 
 /* Segmented Grade Control */
@@ -526,12 +517,13 @@ html.dark .search-bar-wrapper:focus-within {
   gap: 0.25rem;
   border: none;
   min-height: var(--touch-min);
+  width: 100%;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 640px) {
   .segmented-grade-control {
-    display: inline-grid;
-    min-width: 360px;
+    width: auto;
+    min-width: 380px;
   }
 }
 
@@ -565,57 +557,6 @@ html.dark .search-bar-wrapper:focus-within {
 
 .grade-pill:active {
   transform: scale(0.96);
-}
-
-/* Quick Districts Horizontal Strip */
-.quick-districts-strip {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  overflow: hidden;
-}
-
-.quick-districts-label {
-  font-size: 0.75rem;
-  font-weight: 750;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.quick-districts-list {
-  display: flex;
-  gap: 0.4rem;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding: 0.15rem 0;
-}
-
-.quick-districts-list::-webkit-scrollbar {
-  display: none;
-}
-
-.quick-pill {
-  font-family: var(--font-mono);
-  font-size: 0.825rem;
-  font-weight: 700;
-  padding: 0.35rem 0.75rem;
-  border-radius: var(--radius-pill);
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all var(--transition-fast);
-}
-
-.quick-pill:hover,
-.quick-pill:active {
-  background-color: var(--brand-blue);
-  color: #ffffff;
-  border-color: transparent;
 }
 
 /* ==========================================================================
@@ -1070,24 +1011,4 @@ html.dark .btn-directions {
 
 .btn-directions:hover .directions-icon {
   transform: translate(2px, -2px);
-}
-
-/* ==========================================================================
-   Footer
-   ========================================================================== */
-
-.site-footer {
-  margin-top: auto;
-  border-top: 1px solid var(--border-subtle);
-  background-color: var(--bg-surface);
-  padding: 2rem 0;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-.footer-inner {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
 }

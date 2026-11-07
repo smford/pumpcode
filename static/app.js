@@ -30,7 +30,6 @@
   const resultsCount = document.getElementById('results-count');
   const resultsSummary = document.getElementById('results-summary');
   const stationsGrid = document.getElementById('stations-grid');
-  const quickOutcodesContainer = document.getElementById('quick-outcodes');
   const gradeRadios = document.querySelectorAll('input[name="fuel-grade"]');
 
   // Initialize
@@ -91,30 +90,10 @@
       }
       state.outcodesIndex = await res.json();
       updateFreshnessBadge(state.outcodesIndex.updated_at);
-      renderQuickOutcodes(state.outcodesIndex.outcodes);
     } catch (err) {
       console.warn('Index load error:', err);
       if (freshnessLabel) freshnessLabel.textContent = 'Data offline';
     }
-  }
-
-  function renderQuickOutcodes(outcodes) {
-    if (!outcodes || !outcodes.length) return;
-    quickOutcodesContainer.innerHTML = '';
-
-    // Show up to 8 top outcodes as quick pills
-    const sample = outcodes.slice(0, 8);
-    sample.forEach((item) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'quick-pill';
-      btn.textContent = item.outcode;
-      btn.title = `${item.station_count} stations in ${item.outcode}`;
-      btn.addEventListener('click', () => {
-        loadOutcode(item.outcode);
-      });
-      quickOutcodesContainer.appendChild(btn);
-    });
   }
 
   // --- Geolocation ---

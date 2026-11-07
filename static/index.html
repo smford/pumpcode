@@ -16,7 +16,7 @@
       }
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=2">
+  <link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
   <!-- Header -->
@@ -98,7 +98,7 @@
         </div>
       </form>
 
-      <!-- Fuel Grade & Popular Districts Strip -->
+      <!-- Fuel Grade Filter Bar -->
       <div class="filters-bar">
         <fieldset class="segmented-grade-control" aria-label="Select Fuel Grade">
           <legend class="visually-hidden">Fuel Grade</legend>
@@ -111,13 +111,6 @@
           <input type="radio" id="grade-e5" name="fuel-grade" value="E5">
           <label for="grade-e5" class="grade-pill">Super (E5)</label>
         </fieldset>
-
-        <div class="quick-districts-strip" id="quick-outcodes-container" aria-label="Popular Districts">
-          <span class="quick-districts-label">Popular:</span>
-          <div class="quick-districts-list" id="quick-outcodes">
-            <!-- Populated from index.json -->
-          </div>
-        </div>
       </div>
     </section>
 
@@ -145,14 +138,6 @@
     </section>
   </main>
 
-  <!-- Footer -->
-  <footer class="site-footer">
-    <div class="container footer-inner">
-      <p>Data provided via UK Fuel Finder &amp; CMA Open Data Schemes.</p>
-      <p>PumpCode &bull; Zero build step, static edge hosting on GitHub Pages.</p>
-    </div>
-  </footer>
-
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
