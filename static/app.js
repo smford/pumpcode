@@ -616,7 +616,8 @@
       : encodeURIComponent(`${station.brand || ''} ${station.name || ''} ${station.postcode || ''}`.trim());
 
     const isApple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const isMobile = isApple || isAndroid;
 
     // Open in new tab on desktop only; on mobile, open directly so native map app intercepts without dropping parameters
     if (!isMobile) {
@@ -627,9 +628,13 @@
     if (isApple) {
       // Apple Maps driving directions
       directionsLink.href = `https://maps.apple.com/?daddr=${dest}&dirflg=d`;
+    } else if (isAndroid) {
+      // Android: launch native turn-by-turn driving navigation in Google Maps
+      const fallbackUrl = encodeURIComponent(`https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`);
+      directionsLink.href = `intent://q=${dest}&mode=d#Intent;scheme=google.navigation;package=com.google.android.apps.maps;action=android.intent.action.VIEW;S.browser_fallback_url=${fallbackUrl};end;`;
     } else {
-      // Google Maps driving directions via native intent host (maps.google.com with daddr and dirflg)
-      directionsLink.href = `https://maps.google.com/maps?daddr=${dest}&dirflg=d`;
+      // Desktop / Other: standard Google Maps driving directions
+      directionsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`;
     }
 
     directionsLink.innerHTML = `
