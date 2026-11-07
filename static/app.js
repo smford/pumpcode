@@ -609,22 +609,28 @@
 
     const directionsLink = document.createElement('a');
     directionsLink.className = 'btn-directions';
-    directionsLink.target = '_blank';
-    directionsLink.rel = 'noopener noreferrer';
 
     const hasCoords = station.lat != null && station.lon != null && !isNaN(station.lat) && !isNaN(station.lon);
-    const dest = hasCoords
+    const rawDest = hasCoords
       ? `${station.lat},${station.lon}`
-      : encodeURIComponent(`${station.name || station.brand || 'Petrol Station'} ${station.postcode || ''}`.trim());
+      : `${station.name || station.brand || 'Petrol Station'} ${station.postcode || ''}`.trim();
+    const encodedDest = encodeURIComponent(rawDest);
 
     const isApple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    // Open in new tab on desktop only; on mobile, open directly to prevent Chrome/Safari intent handoff from stripping URL parameters
+    if (!isMobile) {
+      directionsLink.target = '_blank';
+      directionsLink.rel = 'noopener noreferrer';
+    }
 
     if (isApple) {
-      // Apple Maps driving directions (omit conflicting q param to avoid routing to user's Home address)
-      directionsLink.href = `https://maps.apple.com/?daddr=${dest}&dirflg=d`;
+      // Apple Maps driving directions
+      directionsLink.href = `https://maps.apple.com/?daddr=${encodedDest}&dirflg=d`;
     } else {
-      // Google Maps driving directions
-      directionsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${dest}`;
+      // Google Maps driving directions (fully encoded destination + explicit driving travelmode)
+      directionsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${encodedDest}&travelmode=driving`;
     }
 
     directionsLink.innerHTML = `
