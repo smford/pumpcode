@@ -612,13 +612,19 @@
     directionsLink.target = '_blank';
     directionsLink.rel = 'noopener noreferrer';
 
-    const stationTitle = station.name || station.brand || 'Fuel Station';
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const hasCoords = station.lat != null && station.lon != null && !isNaN(station.lat) && !isNaN(station.lon);
+    const dest = hasCoords
+      ? `${station.lat},${station.lon}`
+      : encodeURIComponent(`${station.name || station.brand || 'Petrol Station'} ${station.postcode || ''}`.trim());
 
-    if (isIOS) {
-      directionsLink.href = `maps://maps.apple.com/?daddr=${encodeURIComponent(station.lat)},${encodeURIComponent(station.lon)}&q=${encodeURIComponent(stationTitle)}`;
+    const isApple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    if (isApple) {
+      // Apple Maps driving directions (omit conflicting q param to avoid routing to user's Home address)
+      directionsLink.href = `https://maps.apple.com/?daddr=${dest}&dirflg=d`;
     } else {
-      directionsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(station.lat)},${encodeURIComponent(station.lon)}`;
+      // Google Maps driving directions
+      directionsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${dest}`;
     }
 
     directionsLink.innerHTML = `
