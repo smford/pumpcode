@@ -57,7 +57,7 @@
     // Register Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=12')
+        navigator.serviceWorker.register('./sw.js?v=13')
           .then((registration) => {
             registration.update();
             console.log('PumpCode PWA Service Worker registered:', registration.scope);
@@ -444,7 +444,68 @@
 
       const payload = await res.json();
       state.currentPayload = payload;
-      state.stations = payload.stations || [];
+      let stations = payload.stations || [];
+
+      // Discover adjacent outcodes within ~3.5 miles to include neighboring forecourts
+      let includesNearby = false;
+      let centerLat = null;
+      let centerLon = null;
+
+      if (state.outcodesIndex && state.outcodesIndex.outcodes) {
+        const currentEntry = state.outcodesIndex.outcodes.find((item) => item.outcode === cleanOutcode);
+        if (currentEntry && currentEntry.lat && currentEntry.lon) {
+          centerLat = currentEntry.lat;
+          centerLon = currentEntry.lon;
+          state.searchCenterCoords = { lat: centerLat, lon: centerLon };
+
+          // Find adjacent outcode districts within 3.5 miles
+          const adjacentDistricts = state.outcodesIndex.outcodes
+            .filter((item) => item.outcode !== cleanOutcode && item.lat && item.lon)
+            .map((item) => ({
+              ...item,
+              dist: calculateDistanceMiles(centerLat, centerLon, item.lat, item.lon)
+            }))
+            .filter((item) => item.dist <= 3.5)
+            .sort((a, b) => a.dist - b.dist)
+            .slice(0, 3);
+
+          if (adjacentDistricts.length > 0) {
+            const neighborPromises = adjacentDistricts.map((adj) =>
+              fetch(`data/outcodes/${adj.outcode}.json`)
+                .then((r) => (r.ok ? r.json() : null))
+                .catch(() => null)
+            );
+
+            const neighborResults = await Promise.allSettled(neighborPromises);
+            const stationMap = new Map();
+            stations.forEach((s) => stationMap.set(s.id, s));
+
+            for (const res of neighborResults) {
+              if (res.status === 'fulfilled' && res.value && res.value.stations) {
+                for (const st of res.value.stations) {
+                  if (!stationMap.has(st.id)) {
+                    // Check if forecourt is within 4.5 miles of search center
+                    if (st.lat && st.lon) {
+                      const d = calculateDistanceMiles(centerLat, centerLon, st.lat, st.lon);
+                      if (d <= 4.5) {
+                        stationMap.set(st.id, st);
+                        includesNearby = true;
+                      }
+                    } else {
+                      stationMap.set(st.id, st);
+                      includesNearby = true;
+                    }
+                  }
+                }
+              }
+            }
+            stations = Array.from(stationMap.values());
+          }
+        }
+      }
+
+      state.stations = stations;
+      state.includesNearby = includesNearby;
 
       if (!keepStatus) {
         clearStatus();
@@ -470,7 +531,9 @@
     });
 
     resultsHeader.hidden = false;
-    resultsTitle.textContent = `Forecourts in ${outcode}`;
+    resultsTitle.textContent = state.includesNearby
+      ? `Forecourts in & near ${outcode}`
+      : `Forecourts in ${outcode}`;
     resultsCount.textContent = `${stationsWithPrices.length} forecourt${stationsWithPrices.length === 1 ? '' : 's'}`;
 
     // Compute District Statistics Strip (Lowest, Average, Spread)
@@ -581,8 +644,9 @@
       metaRow.appendChild(postcode);
     }
 
-    if (state.userCoords && station.lat && station.lon) {
-      const distMiles = calculateDistanceMiles(state.userCoords.lat, state.userCoords.lon, station.lat, station.lon);
+    const refCoords = state.userCoords || state.searchCenterCoords;
+    if (refCoords && station.lat && station.lon) {
+      const distMiles = calculateDistanceMiles(refCoords.lat, refCoords.lon, station.lat, station.lon);
       const distBadge = document.createElement('span');
       distBadge.className = 'station-distance';
       distBadge.textContent = `${distMiles.toFixed(1)} mi away`;
@@ -657,18 +721,14 @@
     const directionsLink = document.createElement('a');
     directionsLink.className = 'btn-directions';
 
-    // Build accurate destination query combining brand, station name, and UK postcode
-    // UK postcodes uniquely identify forecourt locations without decimal locale/parsing conflicts
-    const destParts = [];
-    if (station.brand) destParts.push(station.brand);
-    if (station.name && station.name !== station.brand) destParts.push(station.name);
-    if (station.postcode) destParts.push(station.postcode);
+    // Human-readable station label for maps
+    const stationLabel = [station.brand, station.name, station.postcode]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
 
-    let destinationQuery = destParts.join(' ').trim();
-    if (!destinationQuery && station.lat != null && station.lon != null) {
-      destinationQuery = `${station.lat},${station.lon}`;
-    }
-    const encodedDestination = encodeURIComponent(destinationQuery);
+    const hasCoords = station.lat != null && station.lon != null && station.lat !== 0;
+    const destCoords = hasCoords ? `${station.lat},${station.lon}` : encodeURIComponent(stationLabel);
 
     const isApple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const isAndroid = /Android/i.test(navigator.userAgent);
@@ -682,10 +742,23 @@
 
     if (isApple) {
       // Apple Maps driving directions
-      directionsLink.href = `https://maps.apple.com/?daddr=${encodedDestination}&dirflg=d`;
+      const appleLabel = encodeURIComponent(stationLabel);
+      directionsLink.href = hasCoords
+        ? `https://maps.apple.com/?daddr=${station.lat},${station.lon}&q=${appleLabel}&dirflg=d`
+        : `https://maps.apple.com/?daddr=${appleLabel}&dirflg=d`;
+    } else if (isAndroid) {
+      // Android: Use explicit Android Intent for Google Maps app with daddr
+      // Passing daddr coordinates directly ensures navigation routes to the forecourt and NEVER defaults to "Home"
+      const webFallback = `https://www.google.com/maps/dir/?api=1&destination=${destCoords}&travelmode=driving`;
+      const encodedFallback = encodeURIComponent(webFallback);
+      const daddrParam = hasCoords
+        ? `${station.lat},${station.lon}(${encodeURIComponent(stationLabel)})`
+        : encodeURIComponent(stationLabel);
+
+      directionsLink.href = `intent://maps.google.com/maps?daddr=${daddrParam}&dirflg=d#Intent;scheme=https;package=com.google.android.apps.maps;S.browser_fallback_url=${encodedFallback};end;`;
     } else {
-      // Google Maps driving directions (Android App Link & Desktop)
-      directionsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${encodedDestination}&travelmode=driving`;
+      // Desktop & general web: Universal Google Maps driving directions
+      directionsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${destCoords}&travelmode=driving`;
     }
 
     directionsLink.innerHTML = `

@@ -202,8 +202,12 @@ var PublicOpenDataEndpoints = []struct {
 	URL  string
 }{
 	{Name: "Asda", URL: "https://storelocator.asda.com/fuel_prices_data.json"},
-	{Name: "Applegreen", URL: "https://applegreenstores.com/fuel-prices/data.json"},
 	{Name: "Morrisons", URL: "https://www.morrisons.com/fuel-prices/fuel.json"},
+	{Name: "Applegreen", URL: "https://applegreenstores.com/fuel-prices/data.json"},
+	{Name: "Shell", URL: "https://www.shell.co.uk/fuel-prices-data.html"},
+	{Name: "Esso", URL: "https://fuelprices.esso.co.uk/latestdata.json"},
+	{Name: "Rontec", URL: "https://www.rontec-servicestations.co.uk/fuel-prices/data/fuel_prices_data.json"},
+	{Name: "Jet", URL: "https://jetlocal.co.uk/fuel_prices_data.json"},
 }
 
 // FetchOpenDataFeeds fetches live public UK forecourts from standard open-data endpoints.
@@ -496,7 +500,7 @@ func calculateBackoff(attempt int) time.Duration {
 // GenerateMockStations generates rich UK filling station data for testing without live API keys.
 func GenerateMockStations() []sharding.Station {
 	return []sharding.Station{
-		// Southend (SS1)
+		// Southend (SS1 & SS2)
 		{
 			ID:        "mock-ss1-01",
 			Brand:     "Tesco",
@@ -508,24 +512,34 @@ func GenerateMockStations() []sharding.Station {
 			Amenities: []string{"car_wash", "air_water", "shop", "pay_at_pump"},
 		},
 		{
-			ID:        "mock-ss1-02",
-			Brand:     "Sainsbury's",
-			Name:      "Sainsbury's Southend",
-			Postcode:  "SS1 3XX",
-			Lat:       51.5380,
-			Lon:       0.7230,
-			Prices:    map[string]float64{"E10": 137.9, "B7": 143.9},
-			Amenities: []string{"air_water", "shop"},
+			ID:        "u10t0weguyzz",
+			Brand:     "Esso",
+			Name:      "Esso Southchurch Express",
+			Postcode:  "SS1 2QA",
+			Lat:       51.5403,
+			Lon:       0.7305,
+			Prices:    map[string]float64{"E10": 137.9, "B7": 143.9, "E5": 147.9},
+			Amenities: []string{"air_water", "shop", "atm"},
 		},
 		{
-			ID:        "mock-ss1-03",
-			Brand:     "BP",
-			Name:      "BP Eastern Avenue",
-			Postcode:  "SS1 4AA",
-			Lat:       51.5490,
-			Lon:       0.7010,
-			Prices:    map[string]float64{"E10": 141.9, "B7": 147.9, "E5": 152.9, "B7_PREMIUM": 158.9},
-			Amenities: []string{"car_wash", "air_water", "mands_food", "atm"},
+			ID:        "shell-southend-eastern-ave",
+			Brand:     "Shell",
+			Name:      "Shell Waitrose Southend",
+			Postcode:  "SS2 4DQ",
+			Lat:       51.5582,
+			Lon:       0.7214,
+			Prices:    map[string]float64{"E10": 138.9, "B7": 144.9, "E5": 149.9, "B7_PREMIUM": 157.9},
+			Amenities: []string{"car_wash", "air_water", "shop", "atm", "pay_at_pump"},
+		},
+		{
+			ID:        "u10mrcfgzrub",
+			Brand:     "Shell",
+			Name:      "Shell Sovereign",
+			Postcode:  "SS2 6PL",
+			Lat:       51.55815,
+			Lon:       0.696233,
+			Prices:    map[string]float64{"E10": 138.9, "B7": 144.9, "E5": 149.9, "B7_PREMIUM": 157.9},
+			Amenities: []string{"car_wash", "air_water", "shop", "pay_at_pump"},
 		},
 		// Westminster London (SW1A)
 		{
